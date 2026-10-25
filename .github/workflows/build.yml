@@ -1,0 +1,80 @@
+name: Build Brooke
+
+# Runs on every upload to the main branch, or by hand from the Actions tab.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 40
+
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Pick the newest stable Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -v -i beta | sort -V | tail -n 1)
+          if [ -n "$XCODE" ]; then sudo xcode-select -s "$XCODE/Contents/Developer"; fi
+          xcodebuild -version
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build app (unsigned — Sideloadly signs it with your Apple ID)
+        run: |
+          build() {
+            xcodebuild -project Brooke.xcodeproj -scheme Brooke -configuration Release \
+              -sdk iphoneos -destination 'generic/platform=iOS' \
+              -derivedDataPath build \
+              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+              "$@" build
+          }
+          if build -quiet; then
+            echo "ALARMKIT=включён" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Сборка с AlarmKit не прошла — собираю без него (фоновый режим iOS 18 работает)."
+            rm -rf build
+            build -quiet SWIFT_ACTIVE_COMPILATION_CONDITIONS=NO_ALARMKIT
+            echo "ALARMKIT=выключен (нужно исправить, см. лог выше)" >> "$GITHUB_ENV"
+          fi
+
+      - name: Package Brooke.ipa
+        run: |
+          APP=build/Build/Products/Release-iphoneos/Brooke.app
+          test -d "$APP"
+          rm -rf Payload Brooke.ipa
+          mkdir Payload
+          cp -R "$APP" Payload/
+          zip -qry Brooke.ipa Payload
+          ls -lh Brooke.ipa
+
+      - name: Upload as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Brooke-ipa
+          path: Brooke.ipa
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Brooke — сборка ${{ github.run_number }}
+          body: |
+            Скачай **Brooke.ipa** ниже и установи через Sideloadly или SideStore.
+            AlarmKit: ${{ env.ALARMKIT }}
+          files: Brooke.ipa
+
+      - name: Summary
+        run: |
+          echo "### ✅ Brooke.ipa готов" >> "$GITHUB_STEP_SUMMARY"
+          echo "Скачай его на странице **Releases** (справа на главной странице репозитория)." >> "$GITHUB_STEP_SUMMARY"
+          echo "AlarmKit: $ALARMKIT" >> "$GITHUB_STEP_SUMMARY"
