@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a0a0b">
+<meta name="color-scheme" content="dark">
+<meta name="format-detection" content="telephone=no">
+<title>Brooke</title>
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --surface: rgba(255, 255, 255, 0.06);
+    --surface-2: rgba(255, 255, 255, 0.1);
+    --stroke: rgba(255, 255, 255, 0.09);
+    --text: #f4efe8;
+    --muted: #9e9994;
+    --accent: #e7b98f;
+    --success: #80cca3;
+    --danger: #eb756e;
+    --serif: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+  body {
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  [hidden] { display: none !important; }
+  svg { display: block; }
+
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted);
+  }
+  .card { background: var(--surface); border: 1px solid var(--stroke); border-radius: 22px; }
+  .primary {
+    width: 100%; height: 56px; border-radius: 999px; background: var(--accent); color: #000;
+    font-size: 17px; font-weight: 600; transition: transform .12s, opacity .12s;
+  }
+  .primary:active { transform: scale(.97); opacity: .85; }
+
+  /* ---------- Home ---------- */
+  .home {
+    position: relative; min-height: 100dvh; display: flex; flex-direction: column;
+    padding: calc(var(--safe-top) + 10px) 20px calc(var(--safe-bottom) + 14px);
+    max-width: 480px; margin: 0 auto;
+  }
+  .backdrop { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  .backdrop img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .8s; }
+  .backdrop img.on { opacity: .32; }
+  .backdrop::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(to bottom, rgba(10,10,11,.35), rgba(10,10,11,.8) 55%, var(--bg));
+  }
+  .home > :not(.backdrop) { position: relative; z-index: 1; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; height: 48px; }
+  .brand { font-size: 13px; font-weight: 600; letter-spacing: .38em; }
+  .icon-btn {
+    width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--surface); border: 1px solid var(--stroke);
+  }
+  .clock-block { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 0 28px; text-align: center; }
+  .big-time {
+    font-family: var(--serif); font-weight: 300; font-size: clamp(72px, 26vw, 112px); line-height: 1.05;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.01em; margin: 8px 0 6px;
+  }
+  .sub { color: var(--muted); font-size: 15px; }
+  .stack { display: flex; flex-direction: column; gap: 12px; }
+  .streak { display: flex; align-items: center; gap: 16px; padding: 16px; }
+  .flame {
+    width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; flex: none;
+    background: rgba(231,185,143,.08); color: var(--muted);
+  }
+  .flame.on { background: rgba(231,185,143,.16); color: var(--accent); }
+  .streak-title { font-family: var(--serif); font-size: 24px; }
+  .streak-sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
+  .hint {
+    display: flex; gap: 12px; align-items: flex-start; padding: 13px 16px; border-radius: 18px;
+    background: var(--surface); border: 1px solid var(--stroke); text-align: left; width: 100%;
+    font-size: 14px; line-height: 1.4; color: rgba(244,239,232,.88);
+  }
+  .hint svg { flex: none; margin-top: 1px; }
+  .hint b { color: var(--text); font-weight: 600; }
+  .hint.warn svg { color: var(--danger); }
+  .hint.tip svg { color: var(--accent); }
+  .hint.calm svg { color: var(--muted); }
+  .ghost { width: 100%; padding: 12px; color: var(--muted); font-size: 14px; font-weight: 500; display: flex; gap: 8px; align-items: center; justify-content: center; }
+
+  /* ---------- Sheets ---------- */
+  .sheet {
+    position: fixed; inset: 0; z-index: 20; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch;
+    animation: up .32s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .sheet-head {
+    position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between;
+    padding: calc(var(--safe-top) + 8px) 20px 10px; background: rgba(10,10,11,.86);
+    -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border-bottom: 1px solid var(--stroke);
+  }
+  .sheet-head h2 { margin: 0; font-size: 17px; font-weight: 600; }
+  .done-btn { color: var(--accent); font-weight: 600; font-size: 17px; padding: 8px 0 8px 12px; }
+  .sheet-body { max-width: 480px; margin: 0 auto; padding: 8px 16px calc(var(--safe-bottom) + 40px); }
+  .group-title { margin: 26px 4px 8px; }
+  .group { background: var(--surface); border: 1px solid var(--stroke); border-radius: 16px; overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 13px 16px; min-height: 52px; font-size: 16px; }
+  .row + .row { border-top: 1px solid var(--stroke); }
+  .row.action { color: var(--accent); width: 100%; text-align: left; }
+  .row.action.danger { color: var(--danger); }
+  .row .grow { flex: 1; min-width: 0; }
+  .row .small { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .row .value { color: var(--muted); }
+  .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .foot { color: var(--muted); font-size: 13px; line-height: 1.45; margin: 8px 4px 0; }
+  .time-input {
+    font-family: var(--serif); font-size: 44px; font-weight: 300; color: var(--text); background: transparent; border: 0;
+    width: 100%; text-align: center; padding: 12px 0; -webkit-appearance: none; appearance: none; color-scheme: dark;
+  }
+  .time-input::-webkit-date-and-time-value { text-align: center; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; padding: 12px; }
+  .thumb { position: relative; aspect-ratio: 3 / 4; border-radius: 12px; overflow: hidden; background: var(--surface-2); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .thumb button {
+    position: absolute; top: 5px; right: 5px; width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(0,0,0,.62); display: grid; place-items: center; color: #fff;
+  }
+  .vid-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; flex: none; color: var(--text); }
+  .del { color: var(--danger); padding: 8px; }
+  .play-btn { color: var(--accent); }
+
+  /* ---------- Guide ---------- */
+  .steps { counter-reset: s; list-style: none; margin: 0; padding: 0; }
+  .steps li { position: relative; padding: 14px 16px 14px 56px; font-size: 15px; line-height: 1.5; }
+  .steps li + li { border-top: 1px solid var(--stroke); }
+  .steps li::before {
+    counter-increment: s; content: counter(s); position: absolute; left: 16px; top: 14px;
+    width: 26px; height: 26px; border-radius: 50%; background: rgba(231,185,143,.16); color: var(--accent);
+    font-size: 13px; font-weight: 700; display: grid; place-items: center;
+  }
+  .q { color: var(--text); font-weight: 600; }
+  .linkbox {
+    margin: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,.35); border: 1px solid var(--stroke);
+    font-family: ui-monospace, Menlo, monospace; font-size: 13px; word-break: break-all; color: var(--accent);
+    -webkit-user-select: all; user-select: all;
+  }
+  .guide-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+  .secondary { width: 100%; height: 52px; border-radius: 999px; background: var(--surface-2); font-weight: 600; font-size: 16px; }
+
+  /* ---------- Wake ---------- */
+  .wake { position: fixed; inset: 0; z-index: 30; background: #000; overflow: hidden; }
+  .slides, .slides img { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .slides img { object-fit: cover; opacity: 0; transition: opacity 1.2s ease; transform-origin: center; }
+  .slides img.show { opacity: 1; animation: kb 8s linear forwards; }
+  @keyframes kb { from { transform: scale(1); } to { transform: scale(1.1); } }
+  .slides .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; padding-bottom: 30vh; }
+  .shade {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(to bottom, rgba(0,0,0,.55), transparent 28%, transparent 45%, rgba(0,0,0,.78));
+  }
+  .wake-top { position: absolute; left: 0; right: 0; top: calc(var(--safe-top) + 18px); text-align: center; text-shadow: 0 2px 18px rgba(0,0,0,.4); }
+  .wake-clock { font-family: var(--serif); font-weight: 300; font-size: 76px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .wake-greet { margin-top: 8px; font-size: 16px; font-weight: 500; color: rgba(255,255,255,.88); }
+  .stage { position: absolute; inset: 0; transition: opacity .45s ease; }
+  .stage.fade { opacity: 0; pointer-events: none; }
+  .bottom { position: absolute; left: 12px; right: 12px; bottom: calc(var(--safe-bottom) + 10px); max-width: 456px; margin: 0 auto; }
+  .glass {
+    background: rgba(28,28,30,.55); -webkit-backdrop-filter: blur(28px) saturate(140%); backdrop-filter: blur(28px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.1); border-radius: 30px; padding: 18px;
+  }
+  .start-btn {
+    width: 100%; height: 76px; border-radius: 999px; background: var(--accent); color: #000;
+    font-size: 21px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px;
+    box-shadow: 0 10px 40px rgba(231,185,143,.35); animation: pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { transform: scale(1.03); } }
+  .start-note { text-align: center; color: rgba(255,255,255,.75); font-size: 13px; margin-top: 12px; }
+  .eq {
+    display: flex; justify-content: center; align-items: baseline; gap: 10px; margin: 12px 0 14px;
+    font-family: var(--serif); font-size: 40px; font-variant-numeric: tabular-nums;
+  }
+  .eq .eqs { color: rgba(255,255,255,.5); }
+  .eq .ans { min-width: 72px; text-align: left; color: var(--accent); }
+  .eq .ans.wrong { color: var(--danger); }
+  .eq .ans.right { color: var(--success); }
+  .shake { animation: shake .4s linear; }
+  @keyframes shake { 20% { transform: translateX(-10px); } 40% { transform: translateX(10px); } 60% { transform: translateX(-7px); } 80% { transform: translateX(7px); } }
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .key {
+    height: 54px; border-radius: 16px; background: rgba(255,255,255,.1); color: #fff;
+    font-size: 26px; display: grid; place-items: center; transition: transform .08s, opacity .08s;
+  }
+  .key:active { transform: scale(.94); opacity: .75; }
+  .key.ok { background: var(--accent); color: #000; }
+  .center-eyebrow { text-align: center; color: rgba(255,255,255,.7); }
+
+  .video-stage { background: #000; }
+  .video-stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; background: #000; }
+  .video-bar { position: absolute; left: 28px; right: 28px; bottom: calc(var(--safe-bottom) + 16px); text-align: center; }
+  .video-bar .label {
+    display: inline-block; font-size: 13px; color: #fff; margin-bottom: 10px; font-weight: 500;
+    padding: 6px 12px; border-radius: 999px; background: rgba(0,0,0,.45);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  }
+  .progress { height: 3px; border-radius: 3px; background: rgba(255,255,255,.2); overflow: hidden; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--accent); }
+  .tap-play {
+    position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.45);
+  }
+  .tap-play span {
+    display: flex; gap: 10px; align-items: center; padding: 16px 26px; border-radius: 999px;
+    background: var(--accent); color: #000; font-weight: 700; font-size: 17px;
+  }
+
+  .done-stage {
+    background: radial-gradient(120% 60% at 50% 0%, rgba(231,185,143,.28), transparent 60%), var(--bg);
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: calc(var(--safe-top) + 24px) 24px calc(var(--safe-bottom) + 20px);
+  }
+  .done-inner { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; max-width: 420px; animation: rise .7s ease-out both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px); } }
+  .done-title { font-family: var(--serif); font-size: 50px; margin: 12px 0 0; font-weight: 400; }
+  .done-flame { margin-top: 40px; color: var(--accent); }
+  .done-num { font-family: var(--serif); font-weight: 300; font-size: 72px; line-height: 1.1; }
+  .done-msg { margin-top: 26px; font-size: 16px; line-height: 1.5; color: rgba(244,239,232,.82); }
+  .done-stage .primary { max-width: 420px; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 24px); transform: translate(-50%, 20px); z-index: 50;
+    background: rgba(40,40,42,.95); color: var(--text); padding: 12px 18px; border-radius: 999px; font-size: 14px;
+    opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; white-space: nowrap;
+  }
+  #toast.on { opacity: 1; transform: translate(-50%, 0); }
+  .busy { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.5); display: grid; place-items: center; }
+  .busy div { padding: 22px 28px; border-radius: 20px; background: rgba(40,40,42,.95); display: flex; gap: 12px; align-items: center; }
+  .spin { width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,.2); border-top-color: var(--accent); animation: sp 0.8s linear infinite; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- SVG icons -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.6 3.3-1.3 5.2-3 7.1C7.5 10.8 6 12.6 6 15.2 6 18.9 8.7 22 12 22s6-3 6-6.6c0-2.8-1.4-4.6-2.6-5.9-.2 1.5-.9 2.6-2 3.1.6-3.6-.2-7.8-1.4-10.6z"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.9l10.4-6.5a1 1 0 0 0 0-1.8L9.5 4.6A1 1 0 0 0 8 5.5z"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></symbol>
+    <symbol id="i-photo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-9 9"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="3"/><path d="M16 10l5-3v10l-5-3z"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5 8.5 8.5 0 1 0 20.5 14.6z"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M17 9l-6 6M11 9l6 6"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></symbol>
+  </defs>
+</svg>
+
+<!-- ===== Home ===== -->
+<main class="home" id="home">
+  <div class="backdrop"><img id="homePhoto" alt=""></div>
+  <header class="topbar">
+    <span class="brand">BROOKE</span>
+    <button class="icon-btn" id="openSettings" aria-label="Настройки"><svg width="20" height="20"><use href="#i-sliders"/></svg></button>
+  </header>
+  <section class="clock-block">
+    <div class="eyebrow" style="color:var(--accent)">Будильник</div>
+    <button class="big-time" id="homeTime">06:00</button>
+    <div class="sub" id="homeSub">Каждый день</div>
+  </section>
+  <section class="stack">
+    <div class="card streak">
+      <div class="flame" id="homeFlame"><svg width="24" height="24"><use href="#i-flame"/></svg></div>
+      <div>
+        <div class="streak-title" id="streakTitle">0 дней подряд</div>
+        <div class="streak-sub" id="streakSub">Встань вовремя — начнётся серия</div>
+      </div>
+    </div>
+    <div class="stack" id="hints"></div>
+    <button class="ghost" id="testBtn"><svg width="18" height="18"><use href="#i-play"/></svg>Проверить утро сейчас</button>
+  </section>
+</main>
+
+<!-- ===== Settings ===== -->
+<section class="sheet" id="settings" hidden>
+  <div class="sheet-head"><span style="width:60px"></span><h2>Настройки</h2><button class="done-btn" data-close>Готово</button></div>
+  <div class="sheet-body">
+    <div class="eyebrow group-title">Время будильника</div>
+    <div class="group"><input class="time-input" id="timeInput" type="time" value="06:00"></div>
+    <p class="foot">Поставь такое же время, как у будильника в «Часах». По нему считается серия: день засчитан, если решил пример в течение 15 минут после звонка.</p>
+
+    <div class="eyebrow group-title">Музыка</div>
+    <div class="group">
+      <div class="row">
+        <svg width="22" height="22" style="color:var(--accent);flex:none"><use href="#i-music"/></svg>
+        <div class="grow"><div class="ellipsis" id="trackName">Трек не выбран</div><div class="small" id="trackNote">Играет, пока решаешь пример</div></div>
+        <button class="play-btn" id="trackPlay" hidden aria-label="Прослушать"><svg width="30" height="30"><use href="#i-play"/></svg></button>
+      </div>
+      <button class="row action" id="pickTrack"><svg width="20" height="20"><use href="#i-plus"/></svg><span id="pickTrackLabel">Выбрать трек (mp3)</span></button>
+    </div>
+    <p class="foot">Сначала сохрани mp3 в приложение «Файлы» — например, в Telegram: открой трек → «Поделиться» → «Сохранить в Файлы».</p>
+
+    <div class="eyebrow group-title" id="photosTitle">Фото · 0</div>
+    <div class="group">
+      <div class="grid" id="photoGrid" hidden></div>
+      <button class="row action" id="pickPhotos"><svg width="20" height="20"><use href="#i-plus"/></svg>Добавить фото</button>
+    </div>
+    <p class="foot">Идут слайд-шоу на экране пробуждения. ✕ — удалить.</p>
+
+    <div class="eyebrow group-title" id="videosTitle">Видео · 0</div>
+    <div class="group">
+      <div id="videoList"></div>
+      <button class="row action" id="pickVideos"><svg width="20" height="20"><use href="#i-plus"/></svg>Добавить видео</button>
+    </div>
+    <p class="foot">После примера включается одно случайное видео. Пропустить нельзя.</p>
+
+    <div class="eyebrow group-title">Будильник iPhone</div>
+    <div class="group">
+      <button class="row action" id="openGuide"><svg width="20" height="20"><use href="#i-bolt"/></svg>Как настроить «Часы» и «Команды»</button>
+      <button class="row action" id="testBtn2"><svg width="20" height="20"><use href="#i-play"/></svg>Проверить утро сейчас</button>
+    </div>
+    <p class="foot">Проверка не влияет на серию.</p>
+
+    <div class="eyebrow group-title">Статистика</div>
+    <div class="group">
+      <div class="row"><div class="grow">Серия</div><div class="value" id="statStreak">0</div></div>
+      <div class="row"><div class="grow">Рекорд</div><div class="value" id="statBest">0</div></div>
+      <button class="row action danger" id="resetStats">Сбросить статистику</button>
+    </div>
+    <p class="foot" id="storageNote">Фото, видео и трек хранятся только на этом iPhone, в Safari. Не очищай «Историю и данные сайтов».</p>
+  </div>
+</section>
+
+<!-- ===== Guide ===== -->
+<section class="sheet" id="guide" hidden>
+  <div class="sheet-head"><span style="width:60px"></span><h2>Настройка</h2><button class="done-btn" data-close>Закрыть</button></div>
+  <div class="sheet-body">
+    <div class="eyebrow group-title">1 · Будильник в «Часах»</div>
+    <div class="group">
+      <ol class="steps">
+        <li>Открой <span class="q">Часы → Будильник → +</span></li>
+        <li>Поставь время, например <span class="q" id="guideTime">06:00</span>, в <span class="q">Повтор</span> отметь все дни.</li>
+        <li>В <span class="q">Звук</span> выбери мелодию или <span class="q">«Выбрать песню»</span> из Медиатеки. Нажми <span class="q">Сохранить</span>.</li>
+      </ol>
+    </div>
+
+    <div class="eyebrow group-title">2 · Автоматизация в «Командах»</div>
+    <div class="group">
+      <ol class="steps">
+        <li>Нажми <span class="q">«Скопировать ссылку»</span> ниже.</li>
+        <li>Открой <span class="q">Команды → Автоматизация → +</span></li>
+        <li>Выбери <span class="q">Будильник</span> → <span class="q">«Выключен»</span> → будильник <span class="q">«Любой»</span> (или свой) → <span class="q">«Запускать немедленно»</span> → <span class="q">Далее</span>.</li>
+        <li><span class="q">«Новая пустая автоматизация»</span> → <span class="q">«Добавить действие»</span> → найди <span class="q">«Открыть URL-адреса»</span>.</li>
+        <li>Нажми на поле «URL», вставь ссылку и нажми <span class="q">Готово</span>.</li>
+      </ol>
+      <div class="linkbox" id="wakeLink">…</div>
+    </div>
+    <p class="foot">Утром: выключаешь будильник → разблокируешь телефон → Brooke уже открыт в Safari.</p>
+
+    <div class="eyebrow group-title">3 · Важно</div>
+    <div class="group">
+      <ol class="steps">
+        <li>Пользуйся Brooke <span class="q">в Safari</span>. Добавь его в <span class="q">Избранное</span>, чтобы быстро открывать.</li>
+        <li>Не открывай его в режиме «Частный доступ» — там всё стирается.</li>
+        <li>Открывай Brooke хотя бы раз в неделю, иначе Safari может удалить фото.</li>
+      </ol>
+    </div>
+
+    <div class="guide-actions">
+      <button class="primary" id="copyLink">Скопировать ссылку</button>
+      <button class="secondary" id="setupDone">Готово, всё настроил</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Wake flow ===== -->
+<section class="wake" id="wake" hidden>
+  <div class="slides" id="slides"></div>
+  <div class="shade"></div>
+
+  <div class="stage" id="stTop">
+    <div class="wake-top">
+      <div class="wake-clock" id="wakeClock">06:00</div>
+      <div class="wake-greet">Доброе утро. Пора вставать</div>
+    </div>
+  </div>
+
+  <div class="stage" id="stStart">
+    <div class="bottom">
+      <button class="start-btn" id="startBtn"><svg width="26" height="26"><use href="#i-sun"/></svg>Я встаю</button>
+      <div class="start-note" id="startNote">Нажми — включится твой трек</div>
+    </div>
+  </div>
+
+  <div class="stage fade" id="stMath" hidden>
+    <div class="bottom glass">
+      <div class="eyebrow center-eyebrow">Реши, чтобы продолжить</div>
+      <div class="eq" id="eq"><span id="eqText">23 × 6</span><span class="eqs">=</span><span class="ans" id="eqAns">?</span></div>
+      <div class="pad" id="pad"></div>
+    </div>
+  </div>
+
+  <div class="stage video-stage fade" id="stVideo" hidden>
+    <video id="video" playsinline webkit-playsinline disablepictureinpicture preload="auto"></video>
+    <div class="video-bar">
+      <div class="label">Досмотри до конца</div>
+      <div class="progress"><i id="videoProgress"></i></div>
+    </div>
+    <button class="tap-play" id="tapPlay" hidden><span><svg width="20" height="20"><use href="#i-play"/></svg>Продолжить видео</span></button>
+  </div>
+
+  <div class="stage done-stage fade" id="stDone" hidden>
+    <div class="done-inner">
+      <div class="eyebrow" style="color:var(--accent)" id="doneWhen">Встал в 06:03</div>
+      <h1 class="done-title">Доброе утро</h1>
+      <div class="done-flame"><svg width="40" height="40"><use href="#i-flame"/></svg></div>
+      <div class="done-num" id="doneNum">1</div>
+      <div class="sub" id="doneDays">день подряд</div>
+      <div class="done-msg" id="doneMsg">Первый день серии. Завтра — второй.</div>
+    </div>
+    <button class="primary" id="finishBtn">Начать день</button>
+  </div>
+</section>
+
+<input type="file" id="fileTrack" accept="audio/*,.mp3,.m4a,.aac,.wav" hidden>
+<input type="file" id="filePhotos" accept="image/*" multiple hidden>
+<input type="file" id="fileVideos" accept="video/*" multiple hidden>
+<div id="toast"></div>
+<div class="busy" id="busy" hidden><div><span class="spin"></span><span id="busyText">Сохраняю…</span></div></div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ---------- helpers ---------- */
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('brooke.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('brooke.' + k, JSON.stringify(v)); } catch {} },
+    del(k) { try { localStorage.removeItem('brooke.' + k); } catch {} },
+  };
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const clock = (d) => pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  const dayKey = (d) => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const days = (n) => {
+    const a = n % 10, b = n % 100;
+    if (a === 1 && b !== 11) return 'день';
+    if (a >= 2 && a <= 4 && !(b >= 12 && b <= 14)) return 'дня';
+    return 'дней';
+  };
+  const dur = (s) => (isFinite(s) && s > 0) ? Math.floor(s / 60) + ':' + pad2(Math.round(s % 60)) : '';
+  const icon = (name, size = 20) => `<svg width="${size}" height="${size}"><use href="#i-${name}"/></svg>`;
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let toastTimer;
+  function toast(text) {
+    const t = $('toast'); t.textContent = text; t.classList.add('on');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2200);
+  }
+  function busy(on, text) { $('busy').hidden = !on; if (text) $('busyText').textContent = text; }
+
+  /* ---------- storage: IndexedDB for media ---------- */
+  let dbPromise;
+  function db() {
+    if (!dbPromise) dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open('brooke', 1);
+      req.onupgradeneeded = () => {
+        const s = req.result.createObjectStore('media', { keyPath: 'id', autoIncrement: true });
+        s.createIndex('kind', 'kind');
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbPromise;
+  }
+  function run(mode, fn) {
+    return db().then((d) => new Promise((resolve, reject) => {
+      const t = d.transaction('media', mode);
+      const result = fn(t.objectStore('media'));
+      t.oncomplete = () => resolve(result && 'result' in result ? result.result : undefined);
+      t.onerror = () => reject(t.error);
+      t.onabort = () => reject(t.error || new Error('abort'));
+    }));
+  }
+  const mediaAll = (kind) => run('readonly', (s) => s.index('kind').getAll(kind)).then((r) => (r || []).sort((a, b) => a.id - b.id));
+  const mediaAdd = (rec) => run('readwrite', (s) => s.add(rec));
+  const mediaDel = (id) => run('readwrite', (s) => s.delete(id));
+
+  const media = { photos: [], videos: [], track: null };
+  const urls = new Map();
+  const urlOf = (rec) => { if (!urls.has(rec.id)) urls.set(rec.id, URL.createObjectURL(rec.blob)); return urls.get(rec.id); };
+  const dropUrl = (id) => { if (urls.has(id)) { URL.revokeObjectURL(urls.get(id)); urls.delete(id); } };
+
+  async function loadMedia() {
+    try {
+      media.photos = await mediaAll('photo');
+      media.videos = await mediaAll('video');
+      media.track = (await mediaAll('track')).pop() || null;
+    } catch (e) {
+      toast('Не удалось открыть хранилище Safari');
+    }
+  }
+
+  async function askPersist() {
+    try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch {}
+  }
+
+  async function shrinkImage(file) {
+    const src = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.src = src;
+      await img.decode();
+      const max = 2000;
+      const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * k);
+      c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.88));
+      return blob || file;
+    } catch {
+      return file;
+    } finally {
+      URL.revokeObjectURL(src);
+    }
+  }
+
+  /* ---------- alarm time & streak ---------- */
+  const getAlarm = () => store.get('alarm', '06:00');
+  function nextAlarm(now = new Date()) {
+    const [h, m] = getAlarm().split(':').map(Number);
+    const d = new Date(now); d.setHours(h, m, 0, 0);
+    if (d <= now) d.setDate(d.getDate() + 1);
+    return d;
+  }
+  function currentStreak() {
+    const last = store.get('lastDay', null);
+    if (!last) return 0;
+    const now = new Date();
+    return (last === dayKey(now) || last === dayKey(addDays(now, -1))) ? store.get('streak', 0) : 0;
+  }
+  function recordWake(now) {
+    const [h, m] = getAlarm().split(':').map(Number);
+    const fire = new Date(now); fire.setHours(h, m, 0, 0);
+    const late = (now - fire) / 60000;
+    const today = dayKey(now);
+    const last = store.get('lastDay', null);
+    if (last === today) return true;                       // already counted today
+    if (late < -60 || late > 15) {                         // too late (or not near the alarm)
+      store.set('streak', 0); store.del('lastDay');
+      return false;
+    }
+    let s = store.get('streak', 0);
+    s = (last === dayKey(addDays(now, -1))) ? s + 1 : 1;
+    store.set('streak', s); store.set('lastDay', today);
+    if (s > store.get('best', 0)) store.set('best', s);
+    return true;
+  }
+
+  /* ---------- home ---------- */
+  function countdown() {
+    const mins = Math.ceil((nextAlarm() - new Date()) / 60000);
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return h ? `через ${h} ч ${m} мин` : `через ${m} мин`;
+  }
+
+  let homePhotoId = null;
+  function renderHome() {
+    $('homeTime').textContent = getAlarm();
+    $('homeSub').textContent = 'Каждый день · ' + countdown();
+    const s = currentStreak(), best = store.get('best', 0);
+    $('streakTitle').textContent = `${s} ${days(s)} подряд`;
+    $('streakSub').textContent = best > 0 ? `Рекорд: ${best} ${days(best)}` : 'Встань вовремя — начнётся серия';
+    $('homeFlame').classList.toggle('on', s > 0);
+
+    const first = media.photos[0];
+    const img = $('homePhoto');
+    if (first && first.id !== homePhotoId) {
+      homePhotoId = first.id;
+      img.onload = () => img.classList.add('on');
+      img.src = urlOf(first);
+    } else if (!first) {
+      homePhotoId = null; img.classList.remove('on'); img.removeAttribute('src');
+    }
+
+    const hints = [];
+    if (navigator.standalone) hints.push(['warn', 'alert', '<b>Открой Brooke в Safari.</b> Значок на экране «Домой» хранит фото отдельно, и «Команды» его не откроют.', null]);
+    if (!store.get('setupDone', false)) hints.push(['tip', 'bolt', '<b>Настрой будильник и автоматизацию</b> — 2 минуты. Нажми здесь.', 'guide']);
+    else hints.push(['calm', 'moon', 'Будильник звонит из «Часов». После выключения Brooke откроется сам.', 'guide']);
+    if (!media.photos.length) hints.push(['calm', 'photo', 'Добавь фото — они будут на экране пробуждения.', 'settings']);
+    if (!media.track) hints.push(['calm', 'music', 'Добавь свой трек — он играет, пока решаешь пример.', 'settings']);
+    $('hints').innerHTML = hints.slice(0, 3).map(([cls, ic, html, target]) =>
+      `<button class="hint ${cls}" ${target ? `data-open="${target}"` : ''}>${icon(ic, 18)}<span>${html}</span></button>`).join('');
+  }
+
+  /* ---------- sheets ---------- */
+  function openSheet(id) {
+    if (id === 'settings') renderSettings();
+    if (id === 'guide') renderGuide();
+    $(id).hidden = false;
+    $(id).scrollTop = 0;
+  }
+  function closeSheet(el) {
+    el.hidden = true;
+    stopPreview();
+    renderHome();
+  }
+  document.addEventListener('click', (e) => {
+    const closer = e.target.closest('[data-close]');
+    if (closer) { closeSheet(closer.closest('.sheet')); return; }
+    const opener = e.target.closest('[data-open]');
+    if (opener) openSheet(opener.dataset.open);
+  });
+
+  /* ---------- settings ---------- */
+  let preview = null;
+  function stopPreview() {
+    if (preview) { preview.pause(); preview = null; }
+    $('trackPlay').innerHTML = icon('play', 30);
+  }
+
+  function renderSettings() {
+    $('timeInput').value = getAlarm();
+    const t = media.track;
+    $('trackName').textContent = t ? t.name : 'Трек не выбран';
+    $('trackNote').textContent = t ? 'Играет по кругу, пока решаешь пример' : 'Без трека будет тихо';
+    $('trackPlay').hidden = !t;
+    $('pickTrackLabel').textContent = t ? 'Заменить трек' : 'Выбрать трек (mp3)';
+
+    $('photosTitle').textContent = 'Фото · ' + media.photos.length;
+    const grid = $('photoGrid');
+    grid.hidden = !media.photos.length;
+    grid.innerHTML = media.photos.map((p) =>
+      `<div class="thumb"><img src="${urlOf(p)}" alt="" loading="lazy"><button data-del-photo="${p.id}" aria-label="Удалить">${icon('x', 12)}</button></div>`).join('');
+
+    $('videosTitle').textContent = 'Видео · ' + media.videos.length;
+    $('videoList').innerHTML = media.videos.map((v) =>
+      `<div class="row"><div class="vid-icon">${icon('film', 20)}</div><div class="grow"><div class="ellipsis">${esc(v.name || 'Видео')}</div><div class="small">${dur(v.duration) || 'Видео'}</div></div><button class="del" data-del-video="${v.id}" aria-label="Удалить">${icon('x', 16)}</button></div>`).join('');
+
+    const s = currentStreak(), best = store.get('best', 0);
+    $('statStreak').textContent = `${s} ${days(s)}`;
+    $('statBest').textContent = `${best} ${days(best)}`;
+
+    if (navigator.storage && navigator.storage.estimate) {
+      navigator.storage.estimate().then((e) => {
+        const mb = Math.round((e.usage || 0) / 1048576);
+        $('storageNote').textContent = `Занято ${mb} МБ. Фото, видео и трек хранятся только на этом iPhone, в Safari. Не очищай «Историю и данные сайтов».`;
+      }).catch(() => {});
+    }
+  }
+
+  $('timeInput').addEventListener('change', (e) => {
+    if (/^\d{2}:\d{2}$/.test(e.target.value)) { store.set('alarm', e.target.value); toast('Время сохранено: ' + e.target.value); }
+  });
+
+  $('pickTrack').onclick = () => $('fileTrack').click();
+  $('pickPhotos').onclick = () => $('filePhotos').click();
+  $('pickVideos').onclick = () => $('fileVideos').click();
+
+  $('fileTrack').addEventListener('change', async (e) => {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    stopPreview();
+    busy(true, 'Сохраняю трек…');
+    try {
+      const ok = await new Promise((resolve) => {
+        const a = new Audio(); const u = URL.createObjectURL(file);
+        const done = (v) => { URL.revokeObjectURL(u); resolve(v); };
+        a.onloadedmetadata = () => done(true); a.onerror = () => done(false);
+        a.preload = 'metadata'; a.src = u;
+        setTimeout(() => done(true), 4000);
+      });
+      if (!ok) throw new Error('bad audio');
+      if (media.track) { await mediaDel(media.track.id); dropUrl(media.track.id); }
+      await mediaAdd({ kind: 'track', blob: file, name: file.name.replace(/\.[^.]+$/, ''), created: Date.now() });
+      await askPersist();
+      await loadMedia();
+      toast('Трек сохранён');
+    } catch {
+      toast('Не получилось открыть этот файл');
+    }
+    busy(false); renderSettings();
+  });
+
+  $('filePhotos').addEventListener('change', async (e) => {
+    const files = [...e.target.files]; e.target.value = '';
+    if (!files.length) return;
+    let n = 0;
+    for (const f of files) {
+      busy(true, `Сохраняю фото ${++n} из ${files.length}…`);
+      try { await mediaAdd({ kind: 'photo', blob: await shrinkImage(f), created: Date.now() }); } catch {}
+    }
+    await askPersist();
+    await loadMedia();
+    busy(false); renderSettings();
+    toast('Фото добавлены');
+  });
+
+  $('fileVideos').addEventListener('change', async (e) => {
+    const files = [...e.target.files]; e.target.value = '';
+    if (!files.length) return;
+    let n = 0, failed = 0;
+    for (const f of files) {
+      busy(true, `Сохраняю видео ${++n} из ${files.length}…`);
+      const duration = await new Promise((resolve) => {
+        const v = document.createElement('video'); const u = URL.createObjectURL(f);
+        const done = (d) => { URL.revokeObjectURL(u); resolve(d); };
+        v.preload = 'metadata'; v.muted = true;
+        v.onloadedmetadata = () => done(v.duration); v.onerror = () => done(-1);
+        v.src = u; setTimeout(() => done(0), 6000);
+      });
+      if (duration === -1) { failed++; continue; }
+      try { await mediaAdd({ kind: 'video', blob: f, name: f.name.replace(/\.[^.]+$/, ''), duration, created: Date.now() }); } catch { failed++; }
+    }
+    await askPersist();
+    await loadMedia();
+    busy(false); renderSettings();
+    toast(failed ? `Не удалось добавить: ${failed}` : 'Видео добавлены');
+  });
+
+  $('settings').addEventListener('click', async (e) => {
+    const p = e.target.closest('[data-del-photo]');
+    const v = e.target.closest('[data-del-video]');
+    if (!p && !v) return;
+    const id = Number((p || v).dataset[p ? 'delPhoto' : 'delVideo']);
+    await mediaDel(id); dropUrl(id);
+    await loadMedia(); renderSettings();
+  });
+
+  $('trackPlay').onclick = () => {
+    if (preview) { stopPreview(); return; }
+    if (!media.track) return;
+    preview = new Audio(urlOf(media.track));
+    preview.onended = stopPreview;
+    preview.play().then(() => { $('trackPlay').innerHTML = icon('stop', 30); }).catch(() => { preview = null; });
+  };
+
+  $('resetStats').onclick = () => {
+    if (!confirm('Сбросить серию и рекорд?')) return;
+    store.set('streak', 0); store.set('best', 0); store.del('lastDay');
+    renderSettings(); toast('Статистика сброшена');
+  };
+
+  $('openSettings').onclick = () => openSheet('settings');
+  $('homeTime').onclick = () => openSheet('settings');
+  $('openGuide').onclick = () => openSheet('guide');
+
+  /* ---------- guide ---------- */
+  const wakeURL = () => location.origin + location.pathname + '?wake=1';
+  function renderGuide() {
+    $('wakeLink').textContent = wakeURL();
+    $('guideTime').textContent = getAlarm();
+  }
+  $('copyLink').onclick = async () => {
+    try { await navigator.clipboard.writeText(wakeURL()); toast('Ссылка скопирована'); }
+    catch {
+      const r = document.createRange(); r.selectNodeContents($('wakeLink'));
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      toast('Выдели ссылку и скопируй');
+    }
+  };
+  $('setupDone').onclick = () => { store.set('setupDone', true); closeSheet($('guide')); toast('Отлично. Завтра проверим 💪'); };
+
+  /* ---------- wake flow ---------- */
+  const W = { test: false, stage: null, audio: null, slideTimer: null, clockTimer: null, problem: null, input: '', state: 'typing', videoURL: null, wakeLock: null };
+
+  function newProblem() {
+    let a = 12 + Math.floor(Math.random() * 38);
+    while (a % 10 === 0) a = 12 + Math.floor(Math.random() * 38);
+    return { a, b: 3 + Math.floor(Math.random() * 7) };
+  }
+
+  function show(stageId) {
+    W.stage = stageId;
+    const all = ['stStart', 'stMath', 'stVideo', 'stDone'];
+    for (const id of all) {
+      const el = $(id);
+      if (id === stageId) { el.hidden = false; requestAnimationFrame(() => el.classList.remove('fade')); }
+      else { el.classList.add('fade'); setTimeout(() => { if (W.stage !== id) el.hidden = true; }, 460); }
+    }
+    $('stTop').classList.toggle('fade', stageId === 'stVideo' || stageId === 'stDone');
+  }
+
+  function startSlides() {
+    const box = $('slides');
+    box.innerHTML = '';
+    if (!media.photos.length) { box.innerHTML = '<div class="empty">Добавь фото в настройках</div>'; return; }
+    const order = [...media.photos].sort(() => Math.random() - 0.5);
+    const layers = [document.createElement('img'), document.createElement('img')];
+    layers.forEach((l) => { l.alt = ''; box.appendChild(l); });
+    let i = 0, front = 0;
+    const next = () => {
+      const img = layers[front];
+      const other = layers[1 - front];
+      img.onload = () => {
+        img.classList.remove('show'); void img.offsetWidth; img.classList.add('show');
+        other.classList.remove('show');
+      };
+      img.src = urlOf(order[i % order.length]);
+      i++; front = 1 - front;
+    };
+    next();
+    if (order.length > 1) W.slideTimer = setInterval(next, 5000);
+  }
+
+  async function keepAwake() {
+    try { if ('wakeLock' in navigator) W.wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+  }
+
+  function openWake(test) {
+    if (W.stage) return;
+    W.test = test;
+    W.problem = newProblem(); W.input = ''; W.state = 'typing';
+    W.videoURL = media.videos.length ? urlOf(media.videos[Math.floor(Math.random() * media.videos.length)]) : null;
+    if (W.videoURL) { const v = $('video'); v.src = W.videoURL; v.load(); }
+    document.querySelectorAll('.sheet').forEach((s) => { s.hidden = true; });
+    stopPreview();
+    $('wake').hidden = false;
+    $('startNote').textContent = media.track ? 'Нажми — включится твой трек' : 'Нажми, чтобы начать';
+    const tickClock = () => { $('wakeClock').textContent = clock(new Date()); };
+    tickClock(); W.clockTimer = setInterval(tickClock, 1000);
+    startSlides();
+    renderMath();
+    show('stStart');
+    keepAwake();
+  }
+
+  $('startBtn').onclick = () => {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+    if (media.track) {
+      W.audio = new Audio(urlOf(media.track));
+      W.audio.loop = true;
+      W.audio.play().catch(() => {});
+    }
+    show('stMath');
+  };
+
+  const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'];
+  $('pad').innerHTML = KEYS.map((k) =>
+    `<button class="key ${k === 'ok' ? 'ok' : ''}" data-k="${k}" aria-label="${k === 'del' ? 'Стереть' : k === 'ok' ? 'Проверить' : k}">${k === 'del' ? icon('back', 24) : k === 'ok' ? icon('check', 24) : k}</button>`).join('');
+
+  function renderMath() {
+    $('eqText').textContent = `${W.problem.a} × ${W.problem.b}`;
+    const ans = $('eqAns');
+    ans.textContent = W.input || '?';
+    ans.className = 'ans' + (W.state === 'wrong' ? ' wrong' : W.state === 'right' ? ' right' : '');
+  }
+
+  $('pad').addEventListener('click', (e) => {
+    const key = e.target.closest('[data-k]');
+    if (!key || W.state === 'right') return;
+    const k = key.dataset.k;
+    if (k === 'del') { if (W.state === 'wrong') W.input = ''; W.state = 'typing'; W.input = W.input.slice(0, -1); renderMath(); return; }
+    if (k === 'ok') { submit(); return; }
+    if (W.state === 'wrong') W.input = '';
+    W.state = 'typing';
+    if (W.input.length < 4) W.input += k;
+    renderMath();
+  });
+
+  function submit() {
+    if (!W.input) return;
+    if (Number(W.input) === W.problem.a * W.problem.b) {
+      W.state = 'right'; renderMath();
+      if (W.audio) { W.audio.pause(); W.audio = null; }
+      W.onTime = W.test ? true : recordWake(new Date());
+      W.wokeAt = new Date();
+      if (W.videoURL) {
+        // Start the video inside the tap so Safari allows sound.
+        const v = $('video');
+        try { v.currentTime = 0; } catch {}
+        v.muted = false;
+        $('tapPlay').hidden = true;
+        const p = v.play();
+        if (p && p.catch) p.catch(() => { $('tapPlay').hidden = false; });
+        show('stVideo');
+      } else {
+        setTimeout(showDone, 500);
+      }
+    } else {
+      W.state = 'wrong'; renderMath();
+      const eq = $('eq'); eq.classList.remove('shake'); void eq.offsetWidth; eq.classList.add('shake');
+      if (navigator.vibrate) navigator.vibrate(120);
+      setTimeout(() => {
+        if (W.state !== 'wrong') return;
+        W.problem = newProblem(); W.input = ''; W.state = 'typing'; renderMath();
+      }, 800);
+    }
+  }
+
+  const video = $('video');
+  video.addEventListener('timeupdate', () => {
+    if (video.duration > 0) $('videoProgress').style.width = Math.min(100, video.currentTime / video.duration * 100) + '%';
+  });
+  video.addEventListener('ended', () => { if (W.stage === 'stVideo') showDone(); });
+  video.addEventListener('error', () => { if (W.stage === 'stVideo') showDone(); });
+  video.addEventListener('pause', () => { if (W.stage === 'stVideo' && !video.ended) $('tapPlay').hidden = false; });
+  video.addEventListener('playing', () => { $('tapPlay').hidden = true; });
+  $('tapPlay').onclick = () => { video.play().catch(() => {}); };
+
+  function showDone() {
+    const s = currentStreak();
+    $('doneWhen').textContent = 'Встал в ' + clock(W.wokeAt || new Date());
+    $('doneNum').textContent = s;
+    $('doneDays').textContent = days(s) + ' подряд';
+    let msg;
+    if (W.test) msg = 'Это была проверка — всё работает. Серия не изменилась.';
+    else if (!W.onTime) msg = 'Сегодня позже, чем через 15 минут после будильника. Серия начнётся заново — завтра получится.';
+    else if (s <= 1) msg = 'Первый день серии. Завтра — второй.';
+    else msg = 'Так держать. Не прерывай серию.';
+    $('doneMsg').textContent = msg;
+    $('doneMsg').parentElement.style.animation = 'none'; void $('doneMsg').offsetWidth; $('doneMsg').parentElement.style.animation = '';
+    show('stDone');
+  }
+
+  $('finishBtn').onclick = () => {
+    clearInterval(W.slideTimer); clearInterval(W.clockTimer);
+    W.slideTimer = W.clockTimer = null;
+    video.pause(); video.removeAttribute('src'); video.load();
+    $('videoProgress').style.width = '0';
+    if (W.wakeLock) { W.wakeLock.release().catch(() => {}); W.wakeLock = null; }
+    $('wake').hidden = true;
+    W.stage = null;
+    ['stMath', 'stVideo', 'stDone'].forEach((id) => { $(id).hidden = true; $(id).classList.add('fade'); });
+    $('stStart').classList.remove('fade'); $('stStart').hidden = false; $('stTop').classList.remove('fade');
+    if (location.search) history.replaceState(null, '', location.pathname);
+    renderHome();
+  };
+
+  $('testBtn').onclick = () => openWake(true);
+  $('testBtn2').onclick = () => openWake(true);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (W.stage) keepAwake(); else renderHome();
+  });
+  setInterval(() => { if (!W.stage && !$('home').hidden) renderHome(); }, 30000);
+
+  /* ---------- start ---------- */
+  (async () => {
+    await loadMedia();
+    renderHome();
+    if (new URLSearchParams(location.search).has('wake')) openWake(false);
+  })();
+})();
+</script>
+</body>
+</html>
