@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brooke · проверка</title>
+<style>
+  body { margin: 0; padding: 24px; background: #0a0a0b; color: #f4efe8; font: 17px/1.5 -apple-system, system-ui, sans-serif; }
+  h1 { font-weight: 600; font-size: 24px; }
+  li { margin: 6px 0; }
+  .ok { color: #80cca3; } .bad { color: #eb756e; }
+  a { color: #e7b98f; }
+</style>
+</head>
+<body>
+<h1>✅ Страница открылась</h1>
+<p>Если ты это видишь, Safari и сайт работают. Ниже проверка памяти Safari:</p>
+<ul id="out"><li>Проверяю…</li></ul>
+<p><a href="./?safe=1">Открыть Brooke в безопасном режиме</a></p>
+<p><a href="./">Открыть Brooke обычно</a></p>
+<script>
+(async () => {
+  const out = [];
+  const add = (ok, text) => out.push(`<li class="${ok ? 'ok' : 'bad'}">${ok ? '✓' : '✗'} ${text}</li>`);
+  add(true, 'Safari ' + (navigator.userAgent.match(/Version\/([\d.]+)/) || [, '?'])[1] + ', iOS ' + ((navigator.userAgent.match(/OS ([\d_]+)/) || [, '?'])[1]).replace(/_/g, '.'));
+  try { localStorage.setItem('t', '1'); localStorage.removeItem('t'); add(true, 'localStorage работает'); } catch (e) { add(false, 'localStorage: ' + e.message); }
+  add(!!window.indexedDB, 'IndexedDB ' + (window.indexedDB ? 'есть' : 'нет'));
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const e = await navigator.storage.estimate();
+      add(true, `Занято ${Math.round((e.usage || 0) / 1048576)} МБ из ~${Math.round((e.quota || 0) / 1048576)} МБ`);
+    }
+  } catch (e) { add(false, 'estimate: ' + e.message); }
+  try {
+    const dbs = indexedDB.databases ? await indexedDB.databases() : [];
+    add(true, 'Базы: ' + (dbs.map((d) => d.name + ' v' + d.version).join(', ') || 'нет'));
+  } catch (e) { add(false, 'databases: ' + e.message); }
+  add(true, 'Отметка сбоя: ' + (localStorage.getItem('brooke.risky') || 'нет'));
+  document.getElementById('out').innerHTML = out.join('');
+})();
+</script>
+</body>
+</html>

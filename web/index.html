@@ -471,36 +471,76 @@
   }
   function busy(on, text) { $('busy').hidden = !on; if (text) $('busyText').textContent = text; }
 
-  /* ---------- storage: IndexedDB for media ---------- */
+  /* ---------- crash guard ----------
+     Before anything heavy we write what we are about to do. If Safari crashes,
+     the mark is still there on the next load and Brooke opens in safe mode
+     instead of crashing again. */
+  const SAFE_PARAM = new URLSearchParams(location.search).has('safe');
+  const risky = store.get('risky', null);
+  const SAFE = SAFE_PARAM || !!risky;
+  const mark = (what) => store.set('risky', what);
+  const unmark = () => store.del('risky');
+
+  /* ---------- storage: IndexedDB ----------
+     "meta" holds small records (kind, name, duration); "blobs" holds the files.
+     Files are read one at a time, only when they are actually shown. */
+  const MAX_VIDEO_MB = 250;
   let dbPromise;
   function db() {
     if (!dbPromise) dbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open('brooke', 1);
+      const req = indexedDB.open('brooke', 2);
       req.onupgradeneeded = () => {
-        const s = req.result.createObjectStore('media', { keyPath: 'id', autoIncrement: true });
-        s.createIndex('kind', 'kind');
+        const d = req.result;
+        if (d.objectStoreNames.contains('media')) d.deleteObjectStore('media');
+        if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta', { keyPath: 'id', autoIncrement: true }).createIndex('kind', 'kind');
+        if (!d.objectStoreNames.contains('blobs')) d.createObjectStore('blobs');
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
+      req.onblocked = () => reject(new Error('blocked'));
     });
     return dbPromise;
   }
-  function run(mode, fn) {
+  function run(stores, mode, fn) {
     return db().then((d) => new Promise((resolve, reject) => {
-      const t = d.transaction('media', mode);
-      const result = fn(t.objectStore('media'));
-      t.oncomplete = () => resolve(result && 'result' in result ? result.result : undefined);
+      const t = d.transaction(stores, mode);
+      let out;
+      fn(t, (v) => { out = v; });
+      t.oncomplete = () => resolve(out);
       t.onerror = () => reject(t.error);
       t.onabort = () => reject(t.error || new Error('abort'));
     }));
   }
-  const mediaAll = (kind) => run('readonly', (s) => s.index('kind').getAll(kind)).then((r) => (r || []).sort((a, b) => a.id - b.id));
-  const mediaAdd = (rec) => run('readwrite', (s) => s.add(rec));
-  const mediaDel = (id) => run('readwrite', (s) => s.delete(id));
+  const mediaAll = (kind) => run('meta', 'readonly', (t, set) => {
+    const r = t.objectStore('meta').index('kind').getAll(kind);
+    r.onsuccess = () => set((r.result || []).sort((a, b) => a.id - b.id));
+  });
+  const mediaAdd = (rec, blob) => run(['meta', 'blobs'], 'readwrite', (t, set) => {
+    const r = t.objectStore('meta').add(rec);
+    r.onsuccess = () => { set(r.result); t.objectStore('blobs').put(blob, r.result); };
+  });
+  const mediaDel = (id) => run(['meta', 'blobs'], 'readwrite', (t) => {
+    t.objectStore('meta').delete(id); t.objectStore('blobs').delete(id);
+  });
+  const mediaClear = () => run(['meta', 'blobs'], 'readwrite', (t) => {
+    t.objectStore('meta').clear(); t.objectStore('blobs').clear();
+  });
+  const blobOf = (id) => run('blobs', 'readonly', (t, set) => {
+    const r = t.objectStore('blobs').get(id);
+    r.onsuccess = () => set(r.result || null);
+  });
 
   const media = { photos: [], videos: [], track: null };
   const urls = new Map();
-  const urlOf = (rec) => { if (!urls.has(rec.id)) urls.set(rec.id, URL.createObjectURL(rec.blob)); return urls.get(rec.id); };
+  async function urlFor(rec) {
+    if (!rec) return null;
+    if (urls.has(rec.id)) return urls.get(rec.id);
+    const blob = await blobOf(rec.id);
+    if (!blob) return null;
+    const u = URL.createObjectURL(blob);
+    urls.set(rec.id, u);
+    return u;
+  }
   const dropUrl = (id) => { if (urls.has(id)) { URL.revokeObjectURL(urls.get(id)); urls.delete(id); } };
 
   async function loadMedia() {
@@ -509,6 +549,7 @@
       media.videos = await mediaAll('video');
       media.track = (await mediaAll('track')).pop() || null;
     } catch (e) {
+      media.photos = []; media.videos = []; media.track = null;
       toast('Не удалось открыть хранилище Safari');
     }
   }
@@ -519,21 +560,22 @@
 
   async function shrinkImage(file) {
     const src = URL.createObjectURL(file);
+    const c = document.createElement('canvas');
     try {
       const img = new Image();
       img.src = src;
       await img.decode();
-      const max = 2000;
+      const max = 1800;
       const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
-      const c = document.createElement('canvas');
       c.width = Math.round(img.naturalWidth * k);
       c.height = Math.round(img.naturalHeight * k);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.88));
+      const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.86));
       return blob || file;
     } catch {
       return file;
     } finally {
+      c.width = 0; c.height = 0;           // free canvas memory right away (important on iPhone)
       URL.revokeObjectURL(src);
     }
   }
@@ -586,15 +628,17 @@
     $('streakSub').textContent = best > 0 ? `Рекорд: ${best} ${days(best)}` : 'Встань вовремя — начнётся серия';
     $('homeFlame').classList.toggle('on', s > 0);
 
-    const first = media.photos[0];
+    const first = SAFE ? null : media.photos[0];
     const img = $('homePhoto');
     if (first && first.id !== homePhotoId) {
       homePhotoId = first.id;
       img.onload = () => img.classList.add('on');
-      img.src = urlOf(first);
+      urlFor(first).then((u) => { if (u && homePhotoId === first.id) img.src = u; }).catch(() => {});
     } else if (!first) {
       homePhotoId = null; img.classList.remove('on'); img.removeAttribute('src');
     }
+
+    if (SAFE) { renderSafe(); return; }
 
     const hints = [];
     if (navigator.standalone) hints.push(['warn', 'alert', '<b>Открой Brooke в Safari.</b> Значок на экране «Домой» хранит фото отдельно, и «Команды» его не откроют.', null]);
@@ -604,6 +648,37 @@
     if (!media.track) hints.push(['calm', 'music', 'Добавь свой трек — он играет, пока решаешь пример.', 'settings']);
     $('hints').innerHTML = hints.slice(0, 3).map(([cls, ic, html, target]) =>
       `<button class="hint ${cls}" ${target ? `data-open="${target}"` : ''}>${icon(ic, 18)}<span>${html}</span></button>`).join('');
+  }
+
+  /* ---------- safe mode ---------- */
+  function renderSafe() {
+    const why = {
+      video: 'Safari закрыл страницу, пока шло видео. Скорее всего, оно слишком большое.',
+      import: 'Safari закрыл страницу, пока сохранялись файлы. Скорее всего, видео слишком большое.',
+      boot: 'Safari закрыл страницу при запуске.',
+    }[risky] || 'Безопасный режим: фото и видео не загружаются.';
+    const sizes = media.videos.length ? ` Видео: ${media.videos.length}.` : '';
+    $('hints').innerHTML = `
+      <div class="hint warn" style="flex-direction:column;gap:10px">
+        <div style="display:flex;gap:12px">${icon('alert', 18)}<span><b>Безопасный режим.</b> ${why}${sizes}</span></div>
+        <button class="secondary" id="safeDelVideos">Удалить все видео</button>
+        <button class="secondary" id="safeDelAll">Удалить всё (фото, видео, трек)</button>
+        <button class="secondary" id="safeContinue" style="background:transparent">Продолжить как есть</button>
+      </div>`;
+    $('safeDelVideos').onclick = async () => {
+      for (const v of media.videos) { try { await mediaDel(v.id); } catch {} }
+      leaveSafe('Видео удалены. Добавляй видео покороче (до 1–2 минут).');
+    };
+    $('safeDelAll').onclick = async () => {
+      try { await mediaClear(); } catch {}
+      leaveSafe('Всё удалено. Можно добавлять заново.');
+    };
+    $('safeContinue').onclick = () => leaveSafe('');
+  }
+  function leaveSafe(msg) {
+    unmark();
+    if (msg) store.set('flash', msg);
+    location.replace(location.pathname);
   }
 
   /* ---------- sheets ---------- */
@@ -644,7 +719,17 @@
     const grid = $('photoGrid');
     grid.hidden = !media.photos.length;
     grid.innerHTML = media.photos.map((p) =>
-      `<div class="thumb"><img src="${urlOf(p)}" alt="" loading="lazy"><button data-del-photo="${p.id}" aria-label="Удалить">${icon('x', 12)}</button></div>`).join('');
+      `<div class="thumb"><img data-photo="${p.id}" alt=""><button data-del-photo="${p.id}" aria-label="Удалить">${icon('x', 12)}</button></div>`).join('');
+    if (!SAFE) {
+      (async () => {
+        for (const p of media.photos) {
+          const el = grid.querySelector(`[data-photo="${p.id}"]`);
+          if (!el) continue;
+          try { const u = await urlFor(p); if (u) el.src = u; } catch {}
+        }
+      })();
+      if (t) urlFor(t).catch(() => {});
+    }
 
     $('videosTitle').textContent = 'Видео · ' + media.videos.length;
     $('videoList').innerHTML = media.videos.map((v) =>
@@ -684,14 +769,17 @@
         setTimeout(() => done(true), 4000);
       });
       if (!ok) throw new Error('bad audio');
+      if (file.size > 40 * 1048576) throw new Error('too big');
+      mark('import');
       if (media.track) { await mediaDel(media.track.id); dropUrl(media.track.id); }
-      await mediaAdd({ kind: 'track', blob: file, name: file.name.replace(/\.[^.]+$/, ''), created: Date.now() });
+      await mediaAdd({ kind: 'track', name: file.name.replace(/\.[^.]+$/, ''), size: file.size, created: Date.now() }, file);
       await askPersist();
       await loadMedia();
       toast('Трек сохранён');
-    } catch {
-      toast('Не получилось открыть этот файл');
+    } catch (err) {
+      toast(err && err.message === 'too big' ? 'Трек больше 40 МБ — выбери другой' : 'Не получилось открыть этот файл');
     }
+    unmark();
     busy(false); renderSettings();
   });
 
@@ -699,10 +787,12 @@
     const files = [...e.target.files]; e.target.value = '';
     if (!files.length) return;
     let n = 0;
+    mark('import');
     for (const f of files) {
       busy(true, `Сохраняю фото ${++n} из ${files.length}…`);
-      try { await mediaAdd({ kind: 'photo', blob: await shrinkImage(f), created: Date.now() }); } catch {}
+      try { await mediaAdd({ kind: 'photo', created: Date.now() }, await shrinkImage(f)); } catch {}
     }
+    unmark();
     await askPersist();
     await loadMedia();
     busy(false); renderSettings();
@@ -712,9 +802,11 @@
   $('fileVideos').addEventListener('change', async (e) => {
     const files = [...e.target.files]; e.target.value = '';
     if (!files.length) return;
-    let n = 0, failed = 0;
+    let n = 0, failed = 0, tooBig = 0;
+    mark('import');
     for (const f of files) {
       busy(true, `Сохраняю видео ${++n} из ${files.length}…`);
+      if (f.size > MAX_VIDEO_MB * 1048576) { tooBig++; continue; }
       const duration = await new Promise((resolve) => {
         const v = document.createElement('video'); const u = URL.createObjectURL(f);
         const done = (d) => { URL.revokeObjectURL(u); resolve(d); };
@@ -723,12 +815,14 @@
         v.src = u; setTimeout(() => done(0), 6000);
       });
       if (duration === -1) { failed++; continue; }
-      try { await mediaAdd({ kind: 'video', blob: f, name: f.name.replace(/\.[^.]+$/, ''), duration, created: Date.now() }); } catch { failed++; }
+      try { await mediaAdd({ kind: 'video', name: f.name.replace(/\.[^.]+$/, ''), duration, size: f.size, created: Date.now() }, f); } catch { failed++; }
     }
+    unmark();
     await askPersist();
     await loadMedia();
     busy(false); renderSettings();
-    toast(failed ? `Не удалось добавить: ${failed}` : 'Видео добавлены');
+    if (tooBig) toast(`Видео больше ${MAX_VIDEO_MB} МБ пропущено: ${tooBig}`);
+    else toast(failed ? `Не удалось добавить: ${failed}` : 'Видео добавлены');
   });
 
   $('settings').addEventListener('click', async (e) => {
@@ -742,8 +836,8 @@
 
   $('trackPlay').onclick = () => {
     if (preview) { stopPreview(); return; }
-    if (!media.track) return;
-    preview = new Audio(urlOf(media.track));
+    if (!media.track || !urls.has(media.track.id)) { toast('Трек ещё загружается'); return; }
+    preview = new Audio(urls.get(media.track.id));
     preview.onended = stopPreview;
     preview.play().then(() => { $('trackPlay').innerHTML = icon('stop', 30); }).catch(() => { preview = null; });
   };
@@ -802,15 +896,21 @@
     const layers = [document.createElement('img'), document.createElement('img')];
     layers.forEach((l) => { l.alt = ''; box.appendChild(l); });
     let i = 0, front = 0;
-    const next = () => {
+    const next = async () => {
       const img = layers[front];
       const other = layers[1 - front];
+      const rec = order[i % order.length];
+      i++; front = 1 - front;
+      let u = null;
+      try { u = await urlFor(rec); } catch {}
+      if (!u || !W.stage) return;
       img.onload = () => {
         img.classList.remove('show'); void img.offsetWidth; img.classList.add('show');
         other.classList.remove('show');
+        // keep only the visible photo decoded
+        setTimeout(() => { if (!other.classList.contains('show')) other.removeAttribute('src'); }, 1300);
       };
-      img.src = urlOf(order[i % order.length]);
-      i++; front = 1 - front;
+      img.src = u;
     };
     next();
     if (order.length > 1) W.slideTimer = setInterval(next, 5000);
@@ -824,15 +924,26 @@
     if (W.stage) return;
     W.test = test;
     W.problem = newProblem(); W.input = ''; W.state = 'typing';
-    W.videoURL = media.videos.length ? urlOf(media.videos[Math.floor(Math.random() * media.videos.length)]) : null;
-    if (W.videoURL) { const v = $('video'); v.src = W.videoURL; v.load(); }
+    W.videoURL = null;
+    W.trackURL = null;
+    W.stage = 'opening';
+    if (!SAFE) {
+      const pick = media.videos.length ? media.videos[Math.floor(Math.random() * media.videos.length)] : null;
+      if (pick) urlFor(pick).then((u) => {
+        if (!u || !W.stage) return;
+        W.videoURL = u;
+        const v = $('video'); v.src = u; v.preload = 'metadata';
+      }).catch(() => {});
+      if (media.track) urlFor(media.track).then((u) => { W.trackURL = u; }).catch(() => {});
+    }
     document.querySelectorAll('.sheet').forEach((s) => { s.hidden = true; });
     stopPreview();
     $('wake').hidden = false;
     $('startNote').textContent = media.track ? 'Нажми — включится твой трек' : 'Нажми, чтобы начать';
     const tickClock = () => { $('wakeClock').textContent = clock(new Date()); };
     tickClock(); W.clockTimer = setInterval(tickClock, 1000);
-    startSlides();
+    if (SAFE) $('slides').innerHTML = '<div class="empty">Безопасный режим — без фото и видео</div>';
+    else startSlides();
     renderMath();
     show('stStart');
     keepAwake();
@@ -840,8 +951,8 @@
 
   $('startBtn').onclick = () => {
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
-    if (media.track) {
-      W.audio = new Audio(urlOf(media.track));
+    if (W.trackURL) {
+      W.audio = new Audio(W.trackURL);
       W.audio.loop = true;
       W.audio.play().catch(() => {});
     }
@@ -879,6 +990,7 @@
       W.onTime = W.test ? true : recordWake(new Date());
       W.wokeAt = new Date();
       if (W.videoURL) {
+        mark('video');
         // Start the video inside the tap so Safari allows sound.
         const v = $('video');
         try { v.currentTime = 0; } catch {}
@@ -912,6 +1024,7 @@
   $('tapPlay').onclick = () => { video.play().catch(() => {}); };
 
   function showDone() {
+    if (store.get('risky', null) === 'video') unmark();
     const s = currentStreak();
     $('doneWhen').textContent = 'Встал в ' + clock(W.wokeAt || new Date());
     $('doneNum').textContent = s;
@@ -949,11 +1062,21 @@
   });
   setInterval(() => { if (!W.stage && !$('home').hidden) renderHome(); }, 30000);
 
+  // A normal close is not a crash.
+  window.addEventListener('pagehide', () => {
+    const r = store.get('risky', null);
+    if (r === 'boot' || r === 'video') unmark();
+  });
+
   /* ---------- start ---------- */
   (async () => {
+    if (!SAFE) mark('boot');
     await loadMedia();
     renderHome();
-    if (new URLSearchParams(location.search).has('wake')) openWake(false);
+    const flash = store.get('flash', null);
+    if (flash) { store.del('flash'); toast(flash); }
+    if (!SAFE && new URLSearchParams(location.search).has('wake')) openWake(false);
+    if (!SAFE) setTimeout(() => { if (store.get('risky', null) === 'boot') unmark(); }, 4000);
   })();
 })();
 </script>
