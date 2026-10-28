@@ -6,7 +6,12 @@
 <meta name="theme-color" content="#0a0a0b">
 <meta name="color-scheme" content="dark">
 <meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Brooke">
 <title>Brooke</title>
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
 <style>
@@ -397,16 +402,20 @@
     </div>
     <p class="foot">Бесплатный ключ: открой <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, войди через Google → «Create API key» → скопируй и вставь сюда.</p>
 
-    <div class="eyebrow group-title">Синхронизация · ноутбук ↔ телефон</div>
+    <div class="eyebrow group-title" id="syncTitle" style="scroll-margin-top:calc(var(--safe-top) + 72px)">Синхронизация · ноутбук ↔ телефон</div>
     <div class="group">
       <div class="row" id="syncInputRow" style="flex-direction:column;align-items:stretch;gap:10px">
-        <input class="key-input" id="syncInput" type="password" placeholder="Токен GitHub (ghp_…)" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <input class="key-input" id="syncInput" type="password" placeholder="Вставь код синхронизации (ghp_…)" autocomplete="off" autocapitalize="off" spellcheck="false">
       </div>
       <div class="row"><div class="small" id="syncStatus" style="font-size:13px">Выключена — задачи только на этом устройстве.</div></div>
       <button class="row action" id="syncConnect"><svg width="20" height="20"><use href="#i-check"/></svg>Подключить синхронизацию</button>
+      <button class="row action" id="syncCopy" hidden><svg width="20" height="20"><use href="#i-plus"/></svg>Скопировать код для другого устройства</button>
       <button class="row action danger" id="syncOff" hidden>Отключить на этом устройстве</button>
     </div>
-    <p class="foot">Синхронизируются задачи, оценка ИИ и время будильника. Фото и видео остаются на каждом устройстве свои. Вставь <b>один и тот же токен</b> на ноутбуке и на телефоне. Как получить: <a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Brooke" target="_blank" rel="noopener">github.com/settings/tokens/new</a> → галочка только <b>gist</b> → Expiration: <b>No expiration</b> → <b>Generate token</b> → скопируй.</p>
+    <p class="foot">Код синхронизации — это токен GitHub, один на все устройства. Регистрироваться больше нигде не нужно.<br>
+      <b>Первый раз (на ноутбуке):</b> открой <a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Brooke" target="_blank" rel="noopener">github.com/settings/tokens/new</a> (галочка <b>gist</b> уже стоит) → Expiration: <b>No expiration</b> → внизу <b>Generate token</b> → скопируй код, вставь сюда и нажми «Подключить».<br>
+      <b>Телефон:</b> на ноутбуке нажми «Скопировать код», отправь его себе в Telegram, на iPhone скопируй и вставь сюда — и в Safari, и в значке на экране «Домой» (память у них разная).<br>
+      Синхронизируются задачи, оценка ИИ, время будильника и серия дней. Фото, видео и трек у каждого свои.</p>
 
     <div class="eyebrow group-title">Будильник iPhone</div>
     <div class="group">
@@ -451,11 +460,19 @@
     </div>
     <p class="foot">Утром: выключаешь будильник → разблокируешь телефон → Brooke уже открыт в Safari.</p>
 
-    <div class="eyebrow group-title">3 · Важно</div>
+    <div class="eyebrow group-title">3 · Значок на экране «Домой»</div>
     <div class="group">
       <ol class="steps">
-        <li>Пользуйся Brooke <span class="q">в Safari</span>. Добавь его в <span class="q">Избранное</span>, чтобы быстро открывать.</li>
-        <li>Не открывай его в режиме «Частный доступ» — там всё стирается.</li>
+        <li>В Safari нажми <span class="q">Поделиться → На экран «Домой»</span>. Brooke откроется как приложение, без адресной строки.</li>
+        <li>У значка и у Safari <span class="q">разная память</span>. Утро после будильника открывается в Safari — фото, трек и видео для утра добавь там. Видео-награды за задачи добавь и в значке.</li>
+        <li>Включи <span class="q">синхронизацию</span> и там, и там — задачи, серия и время будильника будут общими.</li>
+      </ol>
+    </div>
+
+    <div class="eyebrow group-title">4 · Важно</div>
+    <div class="group">
+      <ol class="steps">
+        <li>Не открывай Brooke в режиме «Частный доступ» — там всё стирается.</li>
         <li>Открывай Brooke хотя бы раз в неделю, иначе Safari может удалить фото.</li>
       </ol>
     </div>
@@ -592,6 +609,8 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2200);
   }
   function busy(on, text) { $('busy').hidden = !on; if (text) $('busyText').textContent = text; }
+  // Opened from the Home Screen icon: its storage is separate from Safari's.
+  const STANDALONE = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
 
   /* ---------- crash guard ----------
      Before anything heavy we write what we are about to do. If Safari crashes,
@@ -724,6 +743,7 @@
     const today = dayKey(now);
     const last = store.get('lastDay', null);
     if (last === today) return true;                       // already counted today
+    store.set('streakAt', Date.now());                     // newest streak wins in sync
     if (late < -60 || late > 15) {                         // too late (or not near the alarm)
       store.set('streak', 0); store.del('lastDay');
       return false;
@@ -764,14 +784,15 @@
     if (SAFE) { renderSafe(); return; }
 
     const hints = [];
-    if (navigator.standalone) hints.push(['warn', 'alert', '<b>Открой Brooke в Safari.</b> Значок на экране «Домой» хранит фото отдельно, и «Команды» его не откроют.', null]);
+    if (!syncCfg()) hints.push(['tip', 'bolt', '<b>Включи синхронизацию</b> — чтобы задачи были одни и те же на ноутбуке и телефоне. Нажми здесь.', 'settings', 'syncTitle']);
     if (!store.get('setupDone', false)) hints.push(['tip', 'bolt', '<b>Настрой будильник и автоматизацию</b> — 2 минуты. Нажми здесь.', 'guide']);
+    else if (STANDALONE) hints.push(['calm', 'moon', 'После будильника Brooke откроется в Safari. Фото, трек и видео для утра добавь и там.', 'guide']);
     else hints.push(['calm', 'moon', 'Будильник звонит из «Часов». После выключения Brooke откроется сам.', 'guide']);
     if (!media.photos.length) hints.push(['calm', 'photo', 'Добавь фото — они будут на экране пробуждения.', 'settings']);
     if (!media.track) hints.push(['calm', 'music', 'Добавь свой трек — он играет, пока решаешь пример.', 'settings']);
     renderToday();
-    $('hints').innerHTML = hints.slice(0, 2).map(([cls, ic, html, target]) =>
-      `<button class="hint ${cls}" ${target ? `data-open="${target}"` : ''}>${icon(ic, 18)}<span>${html}</span></button>`).join('');
+    $('hints').innerHTML = hints.slice(0, 2).map(([cls, ic, html, target, focus]) =>
+      `<button class="hint ${cls}" ${target ? `data-open="${target}"` : ''} ${focus ? `data-focus="${focus}"` : ''}>${icon(ic, 18)}<span>${html}</span></button>`).join('');
   }
 
   /* ---------- tasks ----------
@@ -933,7 +954,7 @@
   });
 
   $('planBtn').onclick = () => openSheet('tasks');
-  $('syncFoot').onclick = () => { $('tasks').hidden = true; openSheet('settings'); };
+  $('syncFoot').onclick = () => { $('tasks').hidden = true; openSheet('settings', 'syncTitle'); };
 
   /* ---------- Gemini ---------- */
   const getKey = () => store.get('geminiKey', '');
@@ -1052,8 +1073,9 @@ motivation — 2 коротких предложения на «ты» имен�
   }
 
   /* ---------- sync: laptop ↔ phone through a secret GitHub Gist ----------
-     Only tasks, AI analysis and the alarm time are synced. Photos, videos,
-     the track and the Gemini key stay on each device. */
+     Only tasks, AI analysis, the alarm time, the streak and "morning done"
+     are synced. Photos, videos, the track and the Gemini key stay on each
+     device (Safari and the Home Screen icon count as two devices). */
   const SYNC_FILE = 'brooke.json';
   const SYNC_DESC = 'Brooke · задачи (синхронизация)';
   const syncCfg = () => store.get('sync', null);
@@ -1110,7 +1132,13 @@ motivation — 2 коротких предложения на «ты» имен�
     analysis: store.get('analysis', {}),
     alarm: getAlarm(),
     alarmAt: store.get('alarmAt', 0),
+    wokeDay: store.get('wokeDay', null),
+    streak: { n: store.get('streak', 0), last: store.get('lastDay', null), best: store.get('best', 0), at: store.get('streakAt', 0) },
   });
+  // Newest change wins; on a tie (old data without a time) the later day, then the longer streak.
+  const streakNewer = (x, y) => ((x.at || 0) - (y.at || 0))
+    || String(x.last || '').localeCompare(String(y.last || '')) || ((x.n || 0) - (y.n || 0));
+  const isDay = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d || '');
 
   function scheduleSync() {
     if (!syncCfg()) return;
@@ -1131,17 +1159,29 @@ motivation — 2 коротких предложения на «ты» имен�
       try { remote = JSON.parse(content || '{}'); } catch {}
       const local = snapshot();
       const remoteAlarmNewer = (remote.alarmAt || 0) > (local.alarmAt || 0) && /^\d{2}:\d{2}$/.test(remote.alarm || '');
+      const rs = remote.streak && typeof remote.streak === 'object' ? remote.streak : null;
+      const st = rs && streakNewer(rs, local.streak) > 0 ? rs : local.streak;
       const merged = {
         v: 1,
         tasks: mergeTasks(local.tasks, remote.tasks),
         analysis: mergeAnalysis(local.analysis, remote.analysis),
         alarm: remoteAlarmNewer ? remote.alarm : local.alarm,
         alarmAt: remoteAlarmNewer ? remote.alarmAt : local.alarmAt,
+        wokeDay: [local.wokeDay, remote.wokeDay].filter(isDay).sort().pop() || null,
+        streak: {
+          n: st.n || 0, last: isDay(st.last) ? st.last : null,
+          best: Math.max(st.best || 0, st.n || 0), at: st.at || 0,
+        },
       };
       store.set('tasks', merged.tasks);
       store.set('analysis', merged.analysis);
       store.set('alarm', merged.alarm);
       store.set('alarmAt', merged.alarmAt);
+      if (merged.wokeDay) store.set('wokeDay', merged.wokeDay);
+      store.set('streak', merged.streak.n);
+      store.set('best', merged.streak.best);
+      store.set('streakAt', merged.streak.at);
+      if (merged.streak.last) store.set('lastDay', merged.streak.last); else store.del('lastDay');
       const text = JSON.stringify(merged);
       if (text !== content) {
         await gh('/gists/' + cfg.gistId, { method: 'PATCH', body: { files: { [SYNC_FILE]: { content: text } } } });
@@ -1196,9 +1236,18 @@ motivation — 2 коротких предложения на «ты» имен�
       el.style.color = color;
     }
     $('syncConnect').hidden = on && !err;
+    $('syncCopy').hidden = !on;
     $('syncOff').hidden = !on;
     $('syncInputRow').hidden = on && !err;
   }
+
+  // The token is the "account": the same code goes into every device.
+  $('syncCopy').onclick = async () => {
+    const cfg = syncCfg();
+    if (!cfg) return;
+    try { await navigator.clipboard.writeText(cfg.token); toast('Код скопирован'); }
+    catch { prompt('Скопируй код синхронизации:', cfg.token); }
+  };
 
   $('syncConnect').onclick = async () => {
     const token = $('syncInput').value.trim();
@@ -1212,7 +1261,7 @@ motivation — 2 коротких предложения на «ты» имен�
     } catch (e) {
       store.del('sync');
       status.textContent = syncErrorText(e); status.style.color = 'var(--danger)';
-      $('syncConnect').hidden = false; $('syncInputRow').hidden = false; $('syncOff').hidden = true;
+      $('syncConnect').hidden = false; $('syncInputRow').hidden = false; $('syncOff').hidden = true; $('syncCopy').hidden = true;
     }
   };
   $('syncOff').onclick = () => {
@@ -1293,12 +1342,13 @@ motivation — 2 коротких предложения на «ты» имен�
   }
 
   /* ---------- sheets ---------- */
-  function openSheet(id) {
+  function openSheet(id, focusId) {
     if (id === 'settings') renderSettings();
     if (id === 'guide') renderGuide();
     if (id === 'tasks') { renderTasksSheet(); pullIfStale(1500); }
     $(id).hidden = false;
     $(id).scrollTop = 0;
+    if (focusId && $(focusId)) $(focusId).scrollIntoView();
   }
   function closeSheet(el) {
     el.hidden = true;
@@ -1314,7 +1364,7 @@ motivation — 2 коротких предложения на «ты» имен�
     const closer = e.target.closest('[data-close]');
     if (closer) { closeSheet(closer.closest('.sheet')); return; }
     const opener = e.target.closest('[data-open]');
-    if (opener) openSheet(opener.dataset.open);
+    if (opener) openSheet(opener.dataset.open, opener.dataset.focus);
   });
 
   /* ---------- settings ---------- */
@@ -1484,7 +1534,8 @@ motivation — 2 коротких предложения на «ты» имен�
 
   $('resetStats').onclick = () => {
     if (!confirm('Сбросить серию и рекорд?')) return;
-    store.set('streak', 0); store.set('best', 0); store.del('lastDay');
+    store.set('streak', 0); store.set('best', 0); store.del('lastDay'); store.set('streakAt', Date.now());
+    scheduleSync();
     renderSettings(); toast('Статистика сброшена');
   };
 
@@ -1628,7 +1679,7 @@ motivation — 2 коротких предложения на «ты» имен�
       W.state = 'right'; renderMath();
       if (W.audio) { W.audio.pause(); W.audio = null; }
       W.onTime = W.test ? true : recordWake(new Date());
-      if (!W.test) store.set('wokeDay', dayKey(new Date()));
+      if (!W.test) { store.set('wokeDay', dayKey(new Date())); scheduleSync(); }
       W.wokeAt = new Date();
       if (W.videoURL) {
         mark('video');
@@ -1756,6 +1807,14 @@ motivation — 2 коротких предложения на «ты» имен�
     if (!force && !matchMedia('(pointer: coarse)').matches) return;   // not on the laptop
     openWake(false);
   }
+  // Safari and the Home Screen icon keep separate storage: the morning may
+  // already be done in the other one, so pull first (at most 4 s), then decide.
+  async function maybeWakeSynced(force) {
+    if (!force && syncCfg() && nearAlarm() && Date.now() - lastPull > 60000) {
+      await Promise.race([syncNow().catch(() => {}), new Promise((r) => setTimeout(r, 4000))]);
+    }
+    maybeWake(force);
+  }
   const hasWakeParam = () => new URLSearchParams(location.search).has('wake');
 
   // A normal close or switching apps is not a crash.
@@ -1769,16 +1828,16 @@ motivation — 2 коротких предложения на «ты» имен�
     if (document.visibilityState !== 'visible') { clearSoftMarks(); return; }
     if (W.stage) { keepAwake(); return; }
     renderHome();
-    maybeWake(hasWakeParam());
+    maybeWakeSynced(hasWakeParam());
     pullIfStale(10000);
   });
   window.addEventListener('pageshow', (e) => {
-    if (e.persisted && !W.stage) { renderHome(); maybeWake(hasWakeParam()); }
+    if (e.persisted && !W.stage) { renderHome(); maybeWakeSynced(hasWakeParam()); }
   });
   setInterval(() => {
     if (W.stage) return;
     renderHome();
-    if (document.visibilityState === 'visible') { maybeWake(false); pullIfStale(60000); }
+    if (document.visibilityState === 'visible') { maybeWakeSynced(false); pullIfStale(60000); }
   }, 30000);
 
   /* ---------- start ---------- */
@@ -1788,7 +1847,7 @@ motivation — 2 коротких предложения на «ты» имен�
     renderHome();
     const flash = store.get('flash', null);
     if (flash) { store.del('flash'); toast(flash); }
-    maybeWake(hasWakeParam());                 // waking up matters more than safe mode
+    maybeWakeSynced(hasWakeParam());           // waking up matters more than safe mode
     if (!SAFE) setTimeout(() => { if (store.get('risky', null) === 'boot') unmark(); }, 1500);
     if (syncCfg()) syncNow().catch(() => {});
   })();
