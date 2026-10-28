@@ -233,6 +233,65 @@
   .done-msg { margin-top: 26px; font-size: 16px; line-height: 1.5; color: rgba(244,239,232,.82); }
   .done-stage .primary { max-width: 420px; }
 
+  /* ---------- Tasks ---------- */
+  .today { padding: 16px; }
+  .today-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+  .today-head .t { font-family: var(--serif); font-size: 22px; }
+  .today-head .p { color: var(--muted); font-size: 13px; }
+  .bar { height: 3px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; margin: 8px 0 4px; }
+  .bar i { display: block; height: 100%; background: var(--accent); transition: width .4s; }
+  .task { display: flex; align-items: flex-start; gap: 12px; padding: 11px 0; width: 100%; text-align: left; }
+  .task + .task { border-top: 1px solid var(--stroke); }
+  .tick {
+    width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255,255,255,.28); flex: none;
+    display: grid; place-items: center; color: #000; margin-top: 1px; transition: background .2s, border-color .2s;
+  }
+  .task.done .tick { background: var(--accent); border-color: var(--accent); }
+  .task .txt { flex: 1; min-width: 0; font-size: 16px; line-height: 1.35; overflow-wrap: anywhere; }
+  .task.done .txt { color: var(--muted); text-decoration: line-through; text-decoration-color: rgba(158,153,148,.6); }
+  .task .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 5px; font-size: 12px; color: var(--muted); }
+  .chip { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; letter-spacing: .02em; }
+  .chip.easy { background: rgba(128,204,163,.14); color: var(--success); }
+  .chip.mid { background: rgba(231,185,143,.16); color: var(--accent); }
+  .chip.hard { background: rgba(235,117,110,.16); color: var(--danger); }
+  .task .x { color: var(--muted); padding: 4px; margin: -2px -4px 0 0; }
+  .plan-btn { justify-content: space-between; align-items: center; }
+  .plan-btn .count { color: var(--muted); font-size: 13px; }
+  .add-row { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--stroke); }
+  .add-row input {
+    flex: 1; min-width: 0; height: 44px; border-radius: 12px; border: 1px solid var(--stroke); background: rgba(0,0,0,.3);
+    color: var(--text); font: 16px var(--sans); padding: 0 12px; -webkit-user-select: text; user-select: text;
+  }
+  .add-row input:focus { outline: none; border-color: rgba(231,185,143,.5); }
+  .add-row button { width: 44px; height: 44px; border-radius: 12px; background: var(--accent); color: #000; display: grid; place-items: center; flex: none; }
+  .list-pad { padding: 4px 16px; }
+  .empty-note { color: var(--muted); font-size: 14px; padding: 14px 16px; }
+  .key-input {
+    width: 100%; height: 48px; border-radius: 12px; border: 1px solid var(--stroke); background: rgba(0,0,0,.3);
+    color: var(--text); font: 15px ui-monospace, Menlo, monospace; padding: 0 12px; -webkit-user-select: text; user-select: text;
+  }
+  a { color: var(--accent); }
+
+  .tasks-stage {
+    background: radial-gradient(120% 50% at 50% 0%, rgba(231,185,143,.18), transparent 60%), var(--bg);
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  .tasks-inner { max-width: 480px; margin: 0 auto; padding: calc(var(--safe-top) + 28px) 20px calc(var(--safe-bottom) + 110px); }
+  .tasks-inner h2 { font-family: var(--serif); font-weight: 400; font-size: 38px; margin: 10px 0 0; }
+  .motivation { font-family: var(--serif); font-style: italic; font-size: 19px; line-height: 1.45; color: rgba(244,239,232,.9); margin: 18px 0 22px; }
+  .ai-note { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; margin: 14px 0 18px; }
+  .order { width: 26px; height: 26px; border-radius: 50%; background: rgba(231,185,143,.16); color: var(--accent); font-size: 13px; font-weight: 700; display: grid; place-items: center; flex: none; margin-top: 1px; }
+  .skeleton { height: 14px; border-radius: 7px; background: linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.12), rgba(255,255,255,.06)); background-size: 200% 100%; animation: sh 1.2s linear infinite; margin: 8px 0; }
+  @keyframes sh { to { background-position: -200% 0; } }
+  .sticky-cta { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px 20px calc(var(--safe-bottom) + 14px); background: linear-gradient(to top, var(--bg) 60%, transparent); }
+  .sticky-cta .primary { display: block; max-width: 440px; margin: 0 auto; }
+
+  .reward { position: fixed; inset: 0; z-index: 40; background: #000; }
+  .reward video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .reward .top { position: absolute; left: 16px; right: 16px; top: calc(var(--safe-top) + 12px); display: flex; justify-content: space-between; align-items: center; }
+  .reward .badge { padding: 8px 14px; border-radius: 999px; background: rgba(0,0,0,.5); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); font-size: 14px; font-weight: 600; }
+  .reward .close { width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,.5); display: grid; place-items: center; color: #fff; }
+
   #toast {
     position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 24px); transform: translate(-50%, 20px); z-index: 50;
     background: rgba(40,40,42,.95); color: var(--text); padding: 12px 18px; border-radius: 999px; font-size: 14px;
@@ -288,6 +347,8 @@
         <div class="streak-sub" id="streakSub">Встань вовремя — начнётся серия</div>
       </div>
     </div>
+    <div class="card today" id="todayCard" hidden></div>
+    <button class="hint tip plan-btn" id="planBtn"><span style="display:flex;gap:12px;align-items:center"><svg width="18" height="18"><use href="#i-plus"/></svg><b id="planLabel">Задачи на завтра</b></span><span class="count" id="planCount"></span></button>
     <div class="stack" id="hints"></div>
     <button class="ghost" id="testBtn"><svg width="18" height="18"><use href="#i-play"/></svg>Проверить утро сейчас</button>
   </section>
@@ -325,6 +386,16 @@
       <button class="row action" id="pickVideos"><svg width="20" height="20"><use href="#i-plus"/></svg>Добавить видео</button>
     </div>
     <p class="foot">После примера включается одно случайное видео. Пропустить нельзя.</p>
+
+    <div class="eyebrow group-title">ИИ-анализ задач · Gemini</div>
+    <div class="group">
+      <div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
+        <input class="key-input" id="keyInput" type="password" placeholder="Вставь ключ Gemini (AIza…)" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <div class="small" id="keyStatus" style="color:var(--muted);font-size:13px">Ключ хранится только на этом iPhone.</div>
+      </div>
+      <button class="row action" id="keySave"><svg width="20" height="20"><use href="#i-check"/></svg>Сохранить и проверить ключ</button>
+    </div>
+    <p class="foot">Бесплатный ключ: открой <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, войди через Google → «Create API key» → скопируй и вставь сюда.</p>
 
     <div class="eyebrow group-title">Будильник iPhone</div>
     <div class="group">
@@ -385,6 +456,35 @@
   </div>
 </section>
 
+<!-- ===== Tasks ===== -->
+<section class="sheet" id="tasks" hidden>
+  <div class="sheet-head"><span style="width:60px"></span><h2>Задачи</h2><button class="done-btn" data-close>Готово</button></div>
+  <div class="sheet-body">
+    <div id="todaySection">
+      <div class="eyebrow group-title" id="todayTitle">Сегодня</div>
+      <div class="group">
+        <div class="list-pad" id="todayList"></div>
+        <form class="add-row" data-day="today"><input placeholder="Добавить задачу на сегодня" maxlength="120" enterkeyhint="done"><button type="submit" aria-label="Добавить"><svg width="20" height="20"><use href="#i-plus"/></svg></button></form>
+      </div>
+    </div>
+    <div id="planSection">
+      <div class="eyebrow group-title" id="planTitle">На завтра</div>
+      <div class="group">
+        <div class="list-pad" id="planList"></div>
+        <form class="add-row" data-day="plan"><input placeholder="Например: создать видео" maxlength="120" enterkeyhint="done"><button type="submit" aria-label="Добавить"><svg width="20" height="20"><use href="#i-plus"/></svg></button></form>
+      </div>
+      <p class="foot">Пиши задачи вечером. Утром после видео Brooke покажет их с оценкой ИИ. За каждую выполненную — видео-награда.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Reward ===== -->
+<section class="reward" id="reward" hidden>
+  <video id="rewardVideo" playsinline webkit-playsinline disablepictureinpicture></video>
+  <div class="top"><span class="badge" id="rewardBadge">Награда 🔥</span><button class="close" id="rewardClose" aria-label="Закрыть"><svg width="16" height="16"><use href="#i-x"/></svg></button></div>
+  <button class="tap-play" id="rewardTap" hidden><span><svg width="20" height="20"><use href="#i-play"/></svg>Смотреть награду</span></button>
+</section>
+
 <!-- ===== Wake flow ===== -->
 <section class="wake" id="wake" hidden>
   <div class="slides" id="slides"></div>
@@ -431,6 +531,16 @@
       <div class="done-msg" id="doneMsg">Первый день серии. Завтра — второй.</div>
     </div>
     <button class="primary" id="finishBtn">Начать день</button>
+  </div>
+
+  <div class="stage tasks-stage fade" id="stTasks" hidden>
+    <div class="tasks-inner">
+      <div class="eyebrow" style="color:var(--accent)" id="tasksDate">Сегодня</div>
+      <h2>Задачи на сегодня</h2>
+      <div id="tasksAI"></div>
+      <div class="group"><div class="list-pad" id="tasksList"></div></div>
+    </div>
+    <div class="sticky-cta"><button class="primary" id="tasksStart">Начать день</button></div>
   </div>
 </section>
 
@@ -548,6 +658,7 @@
       media.photos = await mediaAll('photo');
       media.videos = await mediaAll('video');
       media.track = (await mediaAll('track')).pop() || null;
+      if (typeof prepareReward === 'function') prepareReward();
     } catch (e) {
       media.photos = []; media.videos = []; media.track = null;
       toast('Не удалось открыть хранилище Safari');
@@ -646,9 +757,314 @@
     else hints.push(['calm', 'moon', 'Будильник звонит из «Часов». После выключения Brooke откроется сам.', 'guide']);
     if (!media.photos.length) hints.push(['calm', 'photo', 'Добавь фото — они будут на экране пробуждения.', 'settings']);
     if (!media.track) hints.push(['calm', 'music', 'Добавь свой трек — он играет, пока решаешь пример.', 'settings']);
-    $('hints').innerHTML = hints.slice(0, 3).map(([cls, ic, html, target]) =>
+    renderToday();
+    $('hints').innerHTML = hints.slice(0, 2).map(([cls, ic, html, target]) =>
       `<button class="hint ${cls}" ${target ? `data-open="${target}"` : ''}>${icon(ic, 18)}<span>${html}</span></button>`).join('');
   }
+
+  /* ---------- tasks ----------
+     tasks:    { "2026-10-29": [{ id, text, done, doneAt }] }
+     analysis: { "2026-10-29": { hash, motivation, items: { id: { difficulty, reason, order, when } } } } */
+  const todayKey = () => dayKey(new Date());
+  const planKey = () => dayKey(nextAlarm());          // the morning these tasks are for
+  const allTasks = () => store.get('tasks', {});
+  const tasksOf = (day) => allTasks()[day] || [];
+  const plural = (n, one, few, many) => {
+    const a = n % 10, b = n % 100;
+    if (a === 1 && b !== 11) return one;
+    if (a >= 2 && a <= 4 && !(b >= 12 && b <= 14)) return few;
+    return many;
+  };
+  const fmtDay = (d) => d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+  function keepRecent(obj) {
+    const keys = Object.keys(obj).sort();
+    while (keys.length > 21) delete obj[keys.shift()];
+    return obj;
+  }
+  function saveTasks(day, list) {
+    const all = allTasks();
+    if (list.length) all[day] = list; else delete all[day];
+    store.set('tasks', keepRecent(all));
+  }
+  function addTask(day, text) {
+    const list = tasksOf(day);
+    list.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, done: false });
+    saveTasks(day, list);
+  }
+  function removeTask(day, id) { saveTasks(day, tasksOf(day).filter((t) => t.id !== id)); }
+  function toggleTask(day, id) {
+    const list = tasksOf(day);
+    const t = list.find((x) => x.id === id);
+    if (!t) return false;
+    t.done = !t.done;
+    t.doneAt = t.done ? Date.now() : null;
+    saveTasks(day, list);
+    return t.done;
+  }
+
+  const tasksHash = (list) => list.map((t) => t.id + ':' + t.text).join('|');
+  function analysisFor(day) {
+    const a = store.get('analysis', {})[day];
+    const list = tasksOf(day);
+    return a && list.length && a.hash === tasksHash(list) ? a : null;
+  }
+  function sortedTasks(day) {
+    const list = tasksOf(day);
+    const a = analysisFor(day);
+    if (!a) return list;
+    const ord = (t) => (a.items[t.id] && a.items[t.id].order) || 99;
+    return list.map((t, i) => [t, i]).sort((x, y) => ord(x[0]) - ord(y[0]) || x[1] - y[1]).map((x) => x[0]);
+  }
+  const diffClass = (d) => /лёг|лег/i.test(d) ? 'easy' : /тяж/i.test(d) ? 'hard' : 'mid';
+
+  function taskRow(t, day, a, opts = {}) {
+    const info = a && a.items[t.id];
+    let meta = '';
+    if (info) {
+      meta = `<div class="meta"><span class="chip ${diffClass(info.difficulty)}">${esc(info.difficulty)}</span>` +
+        (info.when ? `<span>${esc(info.when)}</span>` : '') +
+        (opts.reason && info.reason ? `<span style="flex-basis:100%">${esc(info.reason)}</span>` : '') + '</div>';
+    }
+    return `<div class="task ${t.done ? 'done' : ''}" data-day="${day}" data-id="${t.id}">
+      <button class="tick" data-act="toggle" aria-label="${t.done ? 'Отменить' : 'Выполнено'}">${t.done ? icon('check', 14) : ''}</button>
+      <div class="txt" data-act="toggle">${esc(t.text)}${meta}</div>
+      ${opts.remove ? `<button class="x" data-act="remove" aria-label="Удалить">${icon('x', 14)}</button>` : ''}
+    </div>`;
+  }
+  function planRow(t, day, i) {
+    return `<div class="task" data-day="${day}" data-id="${t.id}">
+      <span class="order">${i + 1}</span>
+      <div class="txt">${esc(t.text)}</div>
+      <button class="x" data-act="remove" aria-label="Удалить">${icon('x', 14)}</button>
+    </div>`;
+  }
+
+  function renderToday() {
+    const tk = todayKey();
+    const list = sortedTasks(tk);
+    const card = $('todayCard');
+    if (!list.length) {
+      card.hidden = true;
+    } else {
+      const done = list.filter((t) => t.done).length;
+      const a = analysisFor(tk);
+      card.hidden = false;
+      card.innerHTML = `<div class="today-head"><span class="t">Сегодня</span><span class="p">${done} из ${list.length}${done === list.length ? ' · всё 🔥' : ''}</span></div>
+        <div class="bar"><i style="width:${Math.round(done / list.length * 100)}%"></i></div>
+        ${list.map((t) => taskRow(t, tk, a)).join('')}`;
+    }
+    const pk = planKey();
+    const n = tasksOf(pk).length;
+    $('planLabel').textContent = pk === tk ? 'Задачи на сегодня' : 'Задачи на завтра';
+    $('planCount').textContent = n ? `${n} ${plural(n, 'задача', 'задачи', 'задач')}` : 'написать';
+  }
+
+  function renderTasksSheet() {
+    const tk = todayKey(), pk = planKey();
+    const a = analysisFor(tk);
+    const today = sortedTasks(tk);
+    $('todayTitle').textContent = 'Сегодня · ' + fmtDay(new Date());
+    $('todayList').innerHTML = today.length
+      ? today.map((t) => taskRow(t, tk, a, { remove: true })).join('')
+      : '<div class="empty-note">На сегодня задач нет.</div>';
+    $('planSection').hidden = pk === tk;
+    if (pk !== tk) {
+      const plan = tasksOf(pk);
+      $('planTitle').textContent = 'На завтра · ' + fmtDay(nextAlarm());
+      $('planList').innerHTML = plan.length
+        ? plan.map((t, i) => planRow(t, pk, i)).join('')
+        : '<div class="empty-note">Пока пусто. Что сделаешь завтра?</div>';
+    }
+  }
+
+  function refreshTaskViews() {
+    renderToday();
+    if (!$('tasks').hidden) renderTasksSheet();
+    if (W.stage === 'stTasks') renderTasksStage();
+  }
+
+  document.querySelectorAll('.add-row').forEach((form) => form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = form.querySelector('input');
+    const text = input.value.trim().replace(/\s+/g, ' ');
+    if (!text) return;
+    addTask(form.dataset.day === 'today' ? todayKey() : planKey(), text);
+    input.value = '';
+    refreshTaskViews();
+    input.focus();
+  }));
+
+  document.addEventListener('click', (e) => {
+    const act = e.target.closest('[data-act]');
+    if (!act) return;
+    const row = act.closest('[data-id]');
+    if (!row) return;
+    const { day, id } = row.dataset;
+    if (act.dataset.act === 'remove') { removeTask(day, id); refreshTaskViews(); return; }
+    if (act.dataset.act === 'toggle') {
+      if (day !== todayKey()) return;
+      const done = toggleTask(day, id);
+      refreshTaskViews();
+      if (done) giveReward(day);
+    }
+  });
+
+  $('planBtn').onclick = () => openSheet('tasks');
+
+  /* ---------- Gemini ---------- */
+  const getKey = () => store.get('geminiKey', '');
+  const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash'];
+  const aiErr = (code, detail) => Object.assign(new Error(detail || code), { code });
+  const aiErrorText = (e) => ({
+    nokey: 'Добавь ключ Gemini в настройках — и ИИ оценит задачи.',
+    badkey: 'Ключ Gemini не подходит — проверь его в настройках.',
+    limit: 'Лимит Gemini на сегодня закончился. Задачи всё равно здесь.',
+    network: 'Нет интернета — ИИ-анализ появится позже.',
+    timeout: 'Gemini долго не отвечает. Попробуй позже.',
+  }[e && e.code] || 'ИИ сейчас недоступен. Задачи всё равно здесь.');
+
+  async function gemini(prompt, schema) {
+    const key = getKey();
+    if (!key) throw aiErr('nokey');
+    let lastErr = null;
+    for (const model of GEMINI_MODELS) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 30000);
+      try {
+        const body = { contents: [{ role: 'user', parts: [{ text: prompt }] }] };
+        body.generationConfig = schema
+          ? { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.7 }
+          : { temperature: 0 };
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctrl.signal,
+        });
+        const data = await res.json().catch(() => ({}));
+        const msg = (data.error && data.error.message) || '';
+        if (res.status === 404) { lastErr = aiErr('model', msg); continue; }
+        if ((res.status === 400 && /api key/i.test(msg)) || res.status === 401 || res.status === 403) throw aiErr('badkey', msg);
+        if (res.status === 429) throw aiErr('limit', msg);
+        if (!res.ok) { lastErr = aiErr('http', res.status + ' ' + msg); continue; }
+        const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+        const text = parts.map((p) => p.text || '').join('');
+        if (!text) { lastErr = aiErr('empty'); continue; }
+        return text;
+      } catch (e) {
+        if (e.code === 'badkey' || e.code === 'limit') throw e;
+        lastErr = e.code ? e : aiErr(e.name === 'AbortError' ? 'timeout' : 'network', e.message);
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    throw lastErr || aiErr('unknown');
+  }
+
+  const ANALYSIS_SCHEMA = {
+    type: 'OBJECT',
+    properties: {
+      motivation: { type: 'STRING' },
+      tasks: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            n: { type: 'INTEGER' },
+            difficulty: { type: 'STRING', enum: ['лёгкая', 'средняя', 'тяжёлая'] },
+            reason: { type: 'STRING' },
+            order: { type: 'INTEGER' },
+            when: { type: 'STRING' },
+          },
+          required: ['n', 'difficulty', 'reason', 'order', 'when'],
+        },
+      },
+    },
+    required: ['motivation', 'tasks'],
+  };
+
+  const analyzing = {};
+  async function analyze(day, force) {
+    const list = tasksOf(day);
+    if (!list.length) return null;
+    const cached = analysisFor(day);
+    if (cached && !force) return cached;
+    if (analyzing[day]) return analyzing[day];
+    const job = (async () => {
+      const numbered = list.map((t, i) => `${i + 1}. ${t.text}`).join('\n');
+      const prompt =
+`Ты — спокойный и честный коуч по продуктивности. Человек встаёт по будильнику в ${getAlarm()}. Его задачи на день (${fmtDay(new Date(day + 'T12:00:00'))}):
+${numbered}
+
+Для каждой задачи верни:
+- n — номер задачи из списка;
+- difficulty — "лёгкая", "средняя" или "тяжёлая" (учитывай силу воли, время и усилия; воздержание от чего-то на весь день обычно средняя или тяжёлая);
+- reason — почему такая сложность, до 12 слов;
+- order — порядок выполнения, 1 = делать первой (сложное лучше раньше, пока есть силы);
+- when — когда лучше сделать, 1–3 слова: «утром», «после обеда», «до 12:00», «весь день».
+motivation — 2 коротких предложения на «ты» именно про этот день и эти задачи, без пафоса и без эмодзи.
+Пиши по-русски.`;
+      const text = await gemini(prompt, ANALYSIS_SCHEMA);
+      let json;
+      try { json = JSON.parse(text.replace(/^\s*```(?:json)?\s*/i, '').replace(/```\s*$/, '')); } catch { throw aiErr('parse'); }
+      const items = {};
+      for (const it of (json.tasks || [])) {
+        const t = list[(it.n | 0) - 1];
+        if (!t) continue;
+        items[t.id] = {
+          difficulty: String(it.difficulty || 'средняя'),
+          reason: String(it.reason || '').slice(0, 140),
+          order: it.order | 0,
+          when: String(it.when || '').slice(0, 40),
+        };
+      }
+      const result = { hash: tasksHash(list), motivation: String(json.motivation || '').slice(0, 400), items, at: Date.now() };
+      const all = store.get('analysis', {});
+      all[day] = result;
+      store.set('analysis', keepRecent(all));
+      refreshTaskViews();
+      return result;
+    })();
+    analyzing[day] = job;
+    try { return await job; } finally { delete analyzing[day]; }
+  }
+
+  /* ---------- reward video ---------- */
+  let rewardURL = null;
+  async function prepareReward() {
+    rewardURL = null;
+    if (SAFE || !media.videos.length) return;
+    const pick = media.videos[Math.floor(Math.random() * media.videos.length)];
+    try { rewardURL = await urlFor(pick); } catch { rewardURL = null; }
+  }
+  function giveReward(day) {
+    const list = tasksOf(day);
+    const done = list.filter((t) => t.done).length;
+    const all = done === list.length;
+    if (!rewardURL) {
+      toast(all ? 'Все задачи сделаны! 🔥' : `Сделано ${done} из ${list.length} 🔥`);
+      prepareReward();
+      return;
+    }
+    const v = $('rewardVideo');
+    $('rewardBadge').textContent = all ? 'Все задачи сделаны 🔥' : `Награда · ${done} из ${list.length}`;
+    $('reward').hidden = false;
+    $('rewardTap').hidden = true;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+    mark('video');
+    v.src = rewardURL;
+    v.muted = false;
+    const p = v.play();                        // inside the tap, so Safari allows sound
+    if (p && p.catch) p.catch(() => { $('rewardTap').hidden = false; });
+  }
+  function closeReward() {
+    const v = $('rewardVideo');
+    v.pause(); v.removeAttribute('src'); v.load();
+    $('reward').hidden = true;
+    if (store.get('risky', null) === 'video') unmark();
+    prepareReward();
+  }
+  $('rewardVideo').addEventListener('ended', closeReward);
+  $('rewardVideo').addEventListener('error', () => { if (!$('reward').hidden && $('rewardVideo').getAttribute('src')) closeReward(); });
+  $('rewardClose').onclick = closeReward;
+  $('rewardTap').onclick = () => { $('rewardVideo').play().then(() => { $('rewardTap').hidden = true; }).catch(() => {}); };
 
   /* ---------- safe mode ---------- */
   function renderSafe() {
@@ -685,6 +1101,7 @@
   function openSheet(id) {
     if (id === 'settings') renderSettings();
     if (id === 'guide') renderGuide();
+    if (id === 'tasks') renderTasksSheet();
     $(id).hidden = false;
     $(id).scrollTop = 0;
   }
@@ -692,6 +1109,11 @@
     el.hidden = true;
     stopPreview();
     renderHome();
+    if (el.id === 'tasks' && getKey()) {
+      // analyse in the evening while there is internet, so the morning screen is instant
+      analyze(planKey()).catch(() => {});
+      if (planKey() !== todayKey()) analyze(todayKey()).catch(() => {});
+    }
   }
   document.addEventListener('click', (e) => {
     const closer = e.target.closest('[data-close]');
@@ -707,8 +1129,27 @@
     $('trackPlay').innerHTML = icon('play', 30);
   }
 
+  $('keySave').onclick = async () => {
+    const k = $('keyInput').value.trim();
+    const status = $('keyStatus');
+    if (!k) { store.del('geminiKey'); status.style.color = 'var(--muted)'; status.textContent = 'Ключ удалён.'; return; }
+    store.set('geminiKey', k);
+    status.style.color = 'var(--muted)'; status.textContent = 'Проверяю ключ…';
+    try {
+      await gemini('Ответь одним словом: ок');
+      status.style.color = 'var(--success)'; status.textContent = '✓ Ключ работает. ИИ будет оценивать задачи.';
+      analyze(planKey(), true).catch(() => {});
+      if (planKey() !== todayKey()) analyze(todayKey(), true).catch(() => {});
+    } catch (e) {
+      status.style.color = 'var(--danger)'; status.textContent = aiErrorText(e);
+    }
+  };
+
   function renderSettings() {
     $('timeInput').value = getAlarm();
+    $('keyInput').value = getKey();
+    $('keyStatus').style.color = 'var(--muted)';
+    $('keyStatus').textContent = getKey() ? 'Ключ сохранён. Хранится только на этом iPhone.' : 'Ключ хранится только на этом iPhone.';
     const t = media.track;
     $('trackName').textContent = t ? t.name : 'Трек не выбран';
     $('trackNote').textContent = t ? 'Играет по кругу, пока решаешь пример' : 'Без трека будет тихо';
@@ -879,13 +1320,13 @@
 
   function show(stageId) {
     W.stage = stageId;
-    const all = ['stStart', 'stMath', 'stVideo', 'stDone'];
+    const all = ['stStart', 'stMath', 'stVideo', 'stDone', 'stTasks'];
     for (const id of all) {
       const el = $(id);
       if (id === stageId) { el.hidden = false; requestAnimationFrame(() => el.classList.remove('fade')); }
       else { el.classList.add('fade'); setTimeout(() => { if (W.stage !== id) el.hidden = true; }, 460); }
     }
-    $('stTop').classList.toggle('fade', stageId === 'stVideo' || stageId === 'stDone');
+    $('stTop').classList.toggle('fade', stageId === 'stVideo' || stageId === 'stDone' || stageId === 'stTasks');
   }
 
   function startSlides() {
@@ -1037,22 +1478,63 @@
     else msg = 'Так держать. Не прерывай серию.';
     $('doneMsg').textContent = msg;
     $('doneMsg').parentElement.style.animation = 'none'; void $('doneMsg').offsetWidth; $('doneMsg').parentElement.style.animation = '';
+    const hasTasks = tasksOf(todayKey()).length > 0;
+    $('finishBtn').textContent = hasTasks ? 'Дальше: задачи на сегодня' : 'Начать день';
+    if (hasTasks) analyze(todayKey()).catch(() => {});   // start early, show on the next screen
     show('stDone');
   }
 
-  $('finishBtn').onclick = () => {
+  function showTasksStage() {
+    $('tasksDate').textContent = fmtDay(new Date());
+    renderTasksStage();
+    show('stTasks');
+    $('stTasks').scrollTop = 0;
+    const day = todayKey();
+    if (!analysisFor(day) && getKey()) {
+      analyze(day).then(() => { if (W.stage === 'stTasks') renderTasksStage(); })
+        .catch((e) => { W.aiError = e; if (W.stage === 'stTasks') renderTasksStage(); });
+    }
+  }
+
+  function renderTasksStage() {
+    const day = todayKey();
+    const a = analysisFor(day);
+    const list = sortedTasks(day);
+    let ai;
+    if (a) {
+      ai = (a.motivation ? `<div class="motivation">${esc(a.motivation)}</div>` : '') +
+           `<div class="ai-note">${icon('bolt', 14)}Оценка и порядок — Gemini</div>`;
+    } else if (!getKey()) {
+      ai = `<div class="ai-note">${icon('bolt', 14)}Добавь ключ Gemini в настройках — ИИ оценит сложность и порядок.</div>`;
+    } else if (W.aiError) {
+      ai = `<div class="ai-note">${icon('alert', 14)}${esc(aiErrorText(W.aiError))}</div>`;
+    } else {
+      ai = '<div style="margin:18px 0 22px"><div class="skeleton" style="width:92%"></div><div class="skeleton" style="width:70%"></div><div class="ai-note" style="margin-top:12px">ИИ оценивает задачи…</div></div>';
+    }
+    $('tasksAI').innerHTML = ai;
+    $('tasksList').innerHTML = list.map((t, i) => taskRow(t, day, a, { reason: true, order: a ? i + 1 : 0 })).join('');
+  }
+
+  function finishMorning() {
     clearInterval(W.slideTimer); clearInterval(W.clockTimer);
     W.slideTimer = W.clockTimer = null;
+    W.aiError = null;
     video.pause(); video.removeAttribute('src'); video.load();
     $('videoProgress').style.width = '0';
     if (W.wakeLock) { W.wakeLock.release().catch(() => {}); W.wakeLock = null; }
     $('wake').hidden = true;
     W.stage = null;
-    ['stMath', 'stVideo', 'stDone'].forEach((id) => { $(id).hidden = true; $(id).classList.add('fade'); });
+    ['stMath', 'stVideo', 'stDone', 'stTasks'].forEach((id) => { $(id).hidden = true; $(id).classList.add('fade'); });
     $('stStart').classList.remove('fade'); $('stStart').hidden = false; $('stTop').classList.remove('fade');
     if (location.search) history.replaceState(null, '', location.pathname);
     renderHome();
+    prepareReward();
+  }
+
+  $('finishBtn').onclick = () => {
+    if (tasksOf(todayKey()).length) showTasksStage(); else finishMorning();
   };
+  $('tasksStart').onclick = finishMorning;
 
   $('testBtn').onclick = () => openWake(true);
   $('testBtn2').onclick = () => openWake(true);
