@@ -1,0 +1,7 @@
+.vercel
+brooke-url.txt
+build/
+Payload/
+*.ipa
+Brooke.xcodeproj/
+.DS_Store

@@ -9,6 +9,8 @@ on:
       - '.github/workflows/pages.yml'
       - '**.md'
       - 'vercel.json'
+      - 'deploy-vercel.sh'
+      - '.gitignore'
   workflow_dispatch:
 
 permissions:
