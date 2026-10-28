@@ -8,6 +8,7 @@ on:
       - 'web/**'
       - '.github/workflows/pages.yml'
       - '**.md'
+      - 'vercel.json'
   workflow_dispatch:
 
 permissions:

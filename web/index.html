@@ -397,6 +397,17 @@
     </div>
     <p class="foot">Бесплатный ключ: открой <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, войди через Google → «Create API key» → скопируй и вставь сюда.</p>
 
+    <div class="eyebrow group-title">Синхронизация · ноутбук ↔ телефон</div>
+    <div class="group">
+      <div class="row" id="syncInputRow" style="flex-direction:column;align-items:stretch;gap:10px">
+        <input class="key-input" id="syncInput" type="password" placeholder="Токен GitHub (ghp_…)" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="row"><div class="small" id="syncStatus" style="font-size:13px">Выключена — задачи только на этом устройстве.</div></div>
+      <button class="row action" id="syncConnect"><svg width="20" height="20"><use href="#i-check"/></svg>Подключить синхронизацию</button>
+      <button class="row action danger" id="syncOff" hidden>Отключить на этом устройстве</button>
+    </div>
+    <p class="foot">Синхронизируются задачи, оценка ИИ и время будильника. Фото и видео остаются на каждом устройстве свои. Вставь <b>один и тот же токен</b> на ноутбуке и на телефоне. Как получить: <a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Brooke" target="_blank" rel="noopener">github.com/settings/tokens/new</a> → галочка только <b>gist</b> → Expiration: <b>No expiration</b> → <b>Generate token</b> → скопируй.</p>
+
     <div class="eyebrow group-title">Будильник iPhone</div>
     <div class="group">
       <button class="row action" id="openGuide"><svg width="20" height="20"><use href="#i-bolt"/></svg>Как настроить «Часы» и «Команды»</button>
@@ -475,6 +486,7 @@
       </div>
       <p class="foot">Пиши задачи вечером. Утром после видео Brooke покажет их с оценкой ИИ. За каждую выполненную — видео-награда.</p>
     </div>
+    <p class="foot" id="syncFoot" style="margin-top:18px;cursor:pointer"></p>
   </div>
 </section>
 
@@ -768,7 +780,8 @@
   const todayKey = () => dayKey(new Date());
   const planKey = () => dayKey(nextAlarm());          // the morning these tasks are for
   const allTasks = () => store.get('tasks', {});
-  const tasksOf = (day) => allTasks()[day] || [];
+  const rawTasks = (day) => allTasks()[day] || [];                 // includes deleted (for sync)
+  const tasksOf = (day) => rawTasks(day).filter((t) => !t.deleted);
   const plural = (n, one, few, many) => {
     const a = n % 10, b = n % 100;
     if (a === 1 && b !== 11) return one;
@@ -785,19 +798,28 @@
     const all = allTasks();
     if (list.length) all[day] = list; else delete all[day];
     store.set('tasks', keepRecent(all));
+    scheduleSync();
   }
   function addTask(day, text) {
-    const list = tasksOf(day);
-    list.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, done: false });
+    const list = rawTasks(day);
+    const now = Date.now();
+    list.push({ id: now.toString(36) + Math.random().toString(36).slice(2, 6), text, done: false, createdAt: now, updatedAt: now });
     saveTasks(day, list);
   }
-  function removeTask(day, id) { saveTasks(day, tasksOf(day).filter((t) => t.id !== id)); }
-  function toggleTask(day, id) {
-    const list = tasksOf(day);
+  function removeTask(day, id) {
+    const list = rawTasks(day);
     const t = list.find((x) => x.id === id);
+    if (!t) return;
+    t.deleted = true; t.updatedAt = Date.now();      // kept as a marker so other devices delete it too
+    saveTasks(day, list);
+  }
+  function toggleTask(day, id) {
+    const list = rawTasks(day);
+    const t = list.find((x) => x.id === id && !x.deleted);
     if (!t) return false;
     t.done = !t.done;
     t.doneAt = t.done ? Date.now() : null;
+    t.updatedAt = Date.now();
     saveTasks(day, list);
     return t.done;
   }
@@ -860,6 +882,7 @@
   }
 
   function renderTasksSheet() {
+    renderSyncStatus();
     const tk = todayKey(), pk = planKey();
     const a = analysisFor(tk);
     const today = sortedTasks(tk);
@@ -910,6 +933,7 @@
   });
 
   $('planBtn').onclick = () => openSheet('tasks');
+  $('syncFoot').onclick = () => { $('tasks').hidden = true; openSheet('settings'); };
 
   /* ---------- Gemini ---------- */
   const getKey = () => store.get('geminiKey', '');
@@ -1019,12 +1043,183 @@ motivation — 2 коротких предложения на «ты» имен�
       const all = store.get('analysis', {});
       all[day] = result;
       store.set('analysis', keepRecent(all));
+      scheduleSync();
       refreshTaskViews();
       return result;
     })();
     analyzing[day] = job;
     try { return await job; } finally { delete analyzing[day]; }
   }
+
+  /* ---------- sync: laptop ↔ phone through a secret GitHub Gist ----------
+     Only tasks, AI analysis and the alarm time are synced. Photos, videos,
+     the track and the Gemini key stay on each device. */
+  const SYNC_FILE = 'brooke.json';
+  const SYNC_DESC = 'Brooke · задачи (синхронизация)';
+  const syncCfg = () => store.get('sync', null);
+  let syncTimer = null, syncJob = null, lastPull = 0;
+
+  async function gh(path, opts = {}) {
+    const token = opts.token || (syncCfg() || {}).token;
+    const headers = { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + token };
+    if (opts.body) headers['Content-Type'] = 'application/json';
+    let res;
+    try {
+      res = await fetch('https://api.github.com' + path, {
+        method: opts.method || 'GET', headers, cache: 'no-store',
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+      });
+    } catch (e) { throw aiErr('network', e.message); }
+    if (res.status === 401) throw aiErr('badtoken');
+    if (res.status === 404) throw aiErr('notfound');
+    if (res.status === 403) throw aiErr('forbidden');
+    if (!res.ok) throw aiErr('http', String(res.status));
+    return res.status === 204 ? null : res.json();
+  }
+  const syncErrorText = (e) => ({
+    badtoken: 'Токен не подходит. Создай новый с галочкой «gist».',
+    forbidden: 'У токена нет доступа к Gist. Нужна галочка «gist».',
+    notfound: 'Хранилище не найдено. Нажми «Подключить» ещё раз.',
+    network: 'Нет интернета — синхронизирую позже.',
+  }[e && e.code] || 'Не удалось синхронизировать.');
+
+  const createdOf = (t) => t.createdAt || parseInt(String(t.id).slice(0, -4), 36) || 0;
+  function mergeTasks(a = {}, b = {}) {
+    const out = {};
+    for (const day of new Set([...Object.keys(a), ...Object.keys(b)])) {
+      const map = new Map();
+      for (const t of [...(a[day] || []), ...(b[day] || [])]) {
+        const cur = map.get(t.id);
+        if (!cur || (t.updatedAt || 0) > (cur.updatedAt || 0)) map.set(t.id, t);
+      }
+      out[day] = [...map.values()].sort((x, y) => createdOf(x) - createdOf(y));
+    }
+    return keepRecent(out);
+  }
+  function mergeAnalysis(a = {}, b = {}) {
+    const out = {};
+    for (const day of new Set([...Object.keys(a), ...Object.keys(b)])) {
+      const x = a[day], y = b[day];
+      out[day] = !x ? y : !y ? x : ((y.at || 0) > (x.at || 0) ? y : x);
+    }
+    return keepRecent(out);
+  }
+  const snapshot = () => ({
+    v: 1,
+    tasks: store.get('tasks', {}),
+    analysis: store.get('analysis', {}),
+    alarm: getAlarm(),
+    alarmAt: store.get('alarmAt', 0),
+  });
+
+  function scheduleSync() {
+    if (!syncCfg()) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => { syncNow().catch(() => {}); }, 1200);
+  }
+
+  async function syncNow() {
+    const cfg = syncCfg();
+    if (!cfg || !cfg.gistId) return;
+    if (syncJob) return syncJob;
+    syncJob = (async () => {
+      const g = await gh('/gists/' + cfg.gistId);
+      const f = g.files && g.files[SYNC_FILE];
+      let content = f ? f.content : '';
+      if (f && f.truncated && f.raw_url) content = await (await fetch(f.raw_url, { cache: 'no-store' })).text();
+      let remote = {};
+      try { remote = JSON.parse(content || '{}'); } catch {}
+      const local = snapshot();
+      const remoteAlarmNewer = (remote.alarmAt || 0) > (local.alarmAt || 0) && /^\d{2}:\d{2}$/.test(remote.alarm || '');
+      const merged = {
+        v: 1,
+        tasks: mergeTasks(local.tasks, remote.tasks),
+        analysis: mergeAnalysis(local.analysis, remote.analysis),
+        alarm: remoteAlarmNewer ? remote.alarm : local.alarm,
+        alarmAt: remoteAlarmNewer ? remote.alarmAt : local.alarmAt,
+      };
+      store.set('tasks', merged.tasks);
+      store.set('analysis', merged.analysis);
+      store.set('alarm', merged.alarm);
+      store.set('alarmAt', merged.alarmAt);
+      const text = JSON.stringify(merged);
+      if (text !== content) {
+        await gh('/gists/' + cfg.gistId, { method: 'PATCH', body: { files: { [SYNC_FILE]: { content: text } } } });
+      }
+      lastPull = Date.now();
+      store.set('syncAt', lastPull);
+      store.del('syncError');
+      if (!W.stage) renderHome(); else refreshTaskViews();
+      if (!$('tasks').hidden) renderTasksSheet();
+      renderSyncStatus();
+    })();
+    try { return await syncJob; }
+    catch (e) { store.set('syncError', e.code || 'unknown'); renderSyncStatus(); throw e; }
+    finally { syncJob = null; }
+  }
+  function pullIfStale(ms) {
+    if (syncCfg() && Date.now() - lastPull > ms) syncNow().catch(() => {});
+  }
+
+  async function connectSync(token) {
+    let gistId = null;
+    for (let page = 1; page <= 5 && !gistId; page++) {
+      const list = await gh(`/gists?per_page=100&page=${page}`, { token });
+      if (!list || !list.length) break;
+      const found = list.find((g) => g.description === SYNC_DESC && g.files && g.files[SYNC_FILE]);
+      if (found) gistId = found.id;
+    }
+    if (!gistId) {
+      const g = await gh('/gists', { token, method: 'POST', body: {
+        description: SYNC_DESC, public: false,
+        files: { [SYNC_FILE]: { content: JSON.stringify(snapshot()) } },
+      } });
+      gistId = g.id;
+    }
+    store.set('sync', { token, gistId });
+    await syncNow();
+  }
+
+  function renderSyncStatus() {
+    const on = !!syncCfg();
+    const at = store.get('syncAt', 0);
+    const err = store.get('syncError', null);
+    const when = at ? clock(new Date(at)) : '';
+    const text = !on ? 'Выключена — задачи только на этом устройстве.'
+      : err ? syncErrorText({ code: err })
+      : at ? `✓ Включена · обновлено в ${when}` : 'Включена.';
+    const color = !on ? 'var(--muted)' : err ? 'var(--danger)' : 'var(--success)';
+    for (const id of ['syncStatus', 'syncFoot']) {
+      const el = $(id);
+      if (!el) continue;
+      el.textContent = id === 'syncFoot' ? 'Синхронизация ноутбук ↔ телефон: ' + text.charAt(0).toLowerCase() + text.slice(1) : text;
+      el.style.color = color;
+    }
+    $('syncConnect').hidden = on && !err;
+    $('syncOff').hidden = !on;
+    $('syncInputRow').hidden = on && !err;
+  }
+
+  $('syncConnect').onclick = async () => {
+    const token = $('syncInput').value.trim();
+    const status = $('syncStatus');
+    if (!token) { status.textContent = 'Вставь токен GitHub.'; status.style.color = 'var(--danger)'; return; }
+    status.textContent = 'Подключаю…'; status.style.color = 'var(--muted)';
+    try {
+      await connectSync(token);
+      $('syncInput').value = '';
+      toast('Синхронизация включена');
+    } catch (e) {
+      store.del('sync');
+      status.textContent = syncErrorText(e); status.style.color = 'var(--danger)';
+      $('syncConnect').hidden = false; $('syncInputRow').hidden = false; $('syncOff').hidden = true;
+    }
+  };
+  $('syncOff').onclick = () => {
+    if (!confirm('Отключить синхронизацию на этом устройстве? Задачи останутся здесь и в GitHub.')) return;
+    store.del('sync'); store.del('syncAt'); store.del('syncError');
+    renderSyncStatus();
+  };
 
   /* ---------- reward video ---------- */
   let rewardURL = null;
@@ -1101,7 +1296,7 @@ motivation — 2 коротких предложения на «ты» имен�
   function openSheet(id) {
     if (id === 'settings') renderSettings();
     if (id === 'guide') renderGuide();
-    if (id === 'tasks') renderTasksSheet();
+    if (id === 'tasks') { renderTasksSheet(); pullIfStale(1500); }
     $(id).hidden = false;
     $(id).scrollTop = 0;
   }
@@ -1148,6 +1343,7 @@ motivation — 2 коротких предложения на «ты» имен�
   function renderSettings() {
     $('timeInput').value = getAlarm();
     $('keyInput').value = getKey();
+    renderSyncStatus();
     $('keyStatus').style.color = 'var(--muted)';
     $('keyStatus').textContent = getKey() ? 'Ключ сохранён. Хранится только на этом iPhone.' : 'Ключ хранится только на этом iPhone.';
     const t = media.track;
@@ -1189,7 +1385,10 @@ motivation — 2 коротких предложения на «ты» имен�
   }
 
   $('timeInput').addEventListener('change', (e) => {
-    if (/^\d{2}:\d{2}$/.test(e.target.value)) { store.set('alarm', e.target.value); toast('Время сохранено: ' + e.target.value); }
+    if (/^\d{2}:\d{2}$/.test(e.target.value)) {
+      store.set('alarm', e.target.value); store.set('alarmAt', Date.now()); scheduleSync();
+      toast('Время сохранено: ' + e.target.value);
+    }
   });
 
   $('pickTrack').onclick = () => $('fileTrack').click();
@@ -1554,6 +1753,7 @@ motivation — 2 коротких предложения на «ты» имен�
     if (W.stage) return;
     if (store.get('wokeDay', null) === dayKey(new Date()) && !force) return;
     if (!force && !nearAlarm()) return;
+    if (!force && !matchMedia('(pointer: coarse)').matches) return;   // not on the laptop
     openWake(false);
   }
   const hasWakeParam = () => new URLSearchParams(location.search).has('wake');
@@ -1570,6 +1770,7 @@ motivation — 2 коротких предложения на «ты» имен�
     if (W.stage) { keepAwake(); return; }
     renderHome();
     maybeWake(hasWakeParam());
+    pullIfStale(10000);
   });
   window.addEventListener('pageshow', (e) => {
     if (e.persisted && !W.stage) { renderHome(); maybeWake(hasWakeParam()); }
@@ -1577,7 +1778,7 @@ motivation — 2 коротких предложения на «ты» имен�
   setInterval(() => {
     if (W.stage) return;
     renderHome();
-    if (document.visibilityState === 'visible') maybeWake(false);
+    if (document.visibilityState === 'visible') { maybeWake(false); pullIfStale(60000); }
   }, 30000);
 
   /* ---------- start ---------- */
@@ -1589,6 +1790,7 @@ motivation — 2 коротких предложения на «ты» имен�
     if (flash) { store.del('flash'); toast(flash); }
     maybeWake(hasWakeParam());                 // waking up matters more than safe mode
     if (!SAFE) setTimeout(() => { if (store.get('risky', null) === 'boot') unmark(); }, 1500);
+    if (syncCfg()) syncNow().catch(() => {});
   })();
 })();
 </script>
