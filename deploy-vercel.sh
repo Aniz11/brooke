@@ -65,7 +65,9 @@ if [ ! -f .vercel/project.json ]; then
     || fail "Не удалось создать проект на Vercel. Пришли текст ошибки выше."
 fi
 ok "Проект готов"
-if vercel git connect --yes >/dev/null 2>&1; then
+# "already connected" also exits with 1, so check the text too
+GIT_OUT=$(vercel git connect --yes 2>&1)
+if [ $? -eq 0 ] || printf '%s' "$GIT_OUT" | grep -qi 'already connected'; then
   ok "GitHub подключён: каждый git push сам обновит сайт"
 else
   note "(Автообновление по git push не подключилось. Ничего страшного:"
@@ -82,12 +84,17 @@ if [ -z "$DEPLOY_URL" ]; then
   fail "Публикация не удалась. Пришли текст выше."
 fi
 
-# Short permanent address (alias) instead of the long one-off deployment URL
+# Short permanent address (alias) instead of the long one-off deployment URL.
+# The team alias (brooke-<user>.vercel.app) is behind Vercel login, so take
+# the shortest alias that actually opens without it (HTTP 200).
 DEPLOY_HOST=${DEPLOY_URL#https://}
-SITE=$(vercel inspect "$DEPLOY_URL" 2>&1 \
+SITE=""
+for U in $(vercel inspect "$DEPLOY_URL" 2>&1 \
   | grep -oE 'https://[A-Za-z0-9.-]+\.vercel\.app' \
   | grep -v -F "$DEPLOY_HOST" \
-  | awk '{ print length($0), $0 }' | sort -n | head -n 1 | cut -d' ' -f2)
+  | awk '{ print length($0), $0 }' | sort -n | cut -d' ' -f2 | uniq); do
+  if [ "$(curl -s -o /dev/null -w '%{http_code}' "$U/" 2>/dev/null)" = "200" ]; then SITE=$U; break; fi
+done
 [ -n "$SITE" ] || SITE=$DEPLOY_URL
 rm -f "$LOG" "$LOG.out"
 
