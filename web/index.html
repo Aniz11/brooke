@@ -988,6 +988,7 @@
       W.state = 'right'; renderMath();
       if (W.audio) { W.audio.pause(); W.audio = null; }
       W.onTime = W.test ? true : recordWake(new Date());
+      if (!W.test) store.set('wokeDay', dayKey(new Date()));
       W.wokeAt = new Date();
       if (W.videoURL) {
         mark('video');
@@ -1056,17 +1057,46 @@
   $('testBtn').onclick = () => openWake(true);
   $('testBtn2').onclick = () => openWake(true);
 
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') return;
-    if (W.stage) keepAwake(); else renderHome();
-  });
-  setInterval(() => { if (!W.stage && !$('home').hidden) renderHome(); }, 30000);
+  /* ---------- auto-start of the morning ----------
+     The wake flow opens when the link has ?wake=1 (from the automation),
+     and also whenever Brooke is opened or brought back between 10 minutes
+     before and 90 minutes after the alarm time, until today's morning is done.
+     This also covers Safari reusing an already open Brooke tab. */
+  function nearAlarm(now = new Date()) {
+    const [h, m] = getAlarm().split(':').map(Number);
+    const fire = new Date(now); fire.setHours(h, m, 0, 0);
+    const diff = (now - fire) / 60000;
+    return diff >= -10 && diff <= 90;
+  }
+  function maybeWake(force) {
+    if (W.stage) return;
+    if (store.get('wokeDay', null) === dayKey(new Date()) && !force) return;
+    if (!force && !nearAlarm()) return;
+    openWake(false);
+  }
+  const hasWakeParam = () => new URLSearchParams(location.search).has('wake');
 
-  // A normal close is not a crash.
-  window.addEventListener('pagehide', () => {
+  // A normal close or switching apps is not a crash.
+  function clearSoftMarks() {
     const r = store.get('risky', null);
     if (r === 'boot' || r === 'video') unmark();
+  }
+  window.addEventListener('pagehide', clearSoftMarks);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') { clearSoftMarks(); return; }
+    if (W.stage) { keepAwake(); return; }
+    renderHome();
+    maybeWake(hasWakeParam());
   });
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted && !W.stage) { renderHome(); maybeWake(hasWakeParam()); }
+  });
+  setInterval(() => {
+    if (W.stage) return;
+    renderHome();
+    if (document.visibilityState === 'visible') maybeWake(false);
+  }, 30000);
 
   /* ---------- start ---------- */
   (async () => {
@@ -1075,8 +1105,8 @@
     renderHome();
     const flash = store.get('flash', null);
     if (flash) { store.del('flash'); toast(flash); }
-    if (!SAFE && new URLSearchParams(location.search).has('wake')) openWake(false);
-    if (!SAFE) setTimeout(() => { if (store.get('risky', null) === 'boot') unmark(); }, 4000);
+    maybeWake(hasWakeParam());                 // waking up matters more than safe mode
+    if (!SAFE) setTimeout(() => { if (store.get('risky', null) === 'boot') unmark(); }, 1500);
   })();
 })();
 </script>
